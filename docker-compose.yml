@@ -1,0 +1,18 @@
+services:
+  redbud:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: redbud
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "5300:8080"
+    volumes:
+      - .:/usr/src/app
+      - node_modules:/usr/src/app/node_modules
+      - .data:/usr/src/app/.data
+
+volumes:
+  .data:
+  node_modules:

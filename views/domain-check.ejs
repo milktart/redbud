@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%- include("partials/head") %>
+  </head>
+  <body>
+    <div class="wrapper" id="wrapper">
+      <%- include("partials/header") %>
+      <div class="content">
+        <section id="messages-wrapper" class="core-container">
+          <div class="instructions">
+            <input type="text" id="query" value="" autocorrect="off" autocapitalize="none" />
+            <button id="btn-check" onclick="query();">Check</button>
+            <button id="btn-clear" onclick="clearLocal();">Clear</button>
+          </div>
+
+          <section id="query-container" class="result-container"></section>
+    
+          <br />
+    
+          <section id="shortlist-container" class="result-container"></section>
+        </section>
+      </div>
+
+      <%- include("partials/nav") %>
+    </div>
+    <!-- <div class="result active"></div> -->
+    <script src="/script.js"></script>
+  </body>
+</html>

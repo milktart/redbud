@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Dashboard</title>
+    <%- include("partials/head") %>
+  </head>
+  <body>
+    <div class="background-animation">
+      <div class="circle circle1"></div>
+      <div class="circle circle2"></div>
+      <div class="circle circle3"></div>
+      <div class="circle circle4"></div>
+      <div class="circle circle5"></div>
+      <div class="circle circle6"></div>
+      <div class="circle circle7"></div>
+      <div class="circle circle8"></div>
+      <div class="circle circle9"></div>
+      <div class="circle circle10"></div>
+      <div class="circle circle11"></div>
+      <div class="circle circle12"></div>
+    </div>
+    <input type="hidden" value="<%= threadId %>" id="threadId" />
+    
+    <div class="wrapper" id="wrapper">
+      <%- include("partials/header") %>
+      <div class="content">
+      
+        <section id="threads-wrapper" class="core-container">
+          <section id="thread-container"></section>
+        </section>
+
+        <section id="messages-wrapper" class="core-container">
+          <section id="message-container"></section>
+        </section>
+      </div>
+
+      <%- include("partials/nav") %>
+        
+    </div>
+
+    <script>
+      // Redirect to dashboard if token already exists
+      $(function () {
+        if (!localStorage.token) {
+          //window.location.replace("/");
+        }
+      });
+      
+      let numbers = getNumbers();
+      $(function () {
+        if (g.i("threadId").value && g.i("threadId").value != "NULL") {
+          getMessages(g.i("threadId").value);
+        }
+      });
+      
+    </script>
+      
+      <!--<input id="phone" type="tel" />
+        <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.10/build/js/intlTelInput.min.js"></script>
+<script>
+  const input = document.querySelector("input[type=tel]");
+  window.intlTelInput(input, {
+    initialCountry: "us",
+  separateDialCode: true,
+    utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.10/build/js/utils.js",
+  });
+</script>-->
+  </body>
+</html>
