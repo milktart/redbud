@@ -1,0 +1,763 @@
+[
+{
+  "iata": "AA",
+  "name": "American Airlines",
+  "country": "United States",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "DL",
+  "name": "Delta Air Lines",
+  "country": "United States",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "UA",
+  "name": "United Airlines",
+  "country": "United States",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "AC",
+  "name": "Air Canada",
+  "country": "Canada",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "WS",
+  "name": "WestJet",
+  "country": "Canada",
+  "alliance": null
+},
+{
+  "iata": "BA",
+  "name": "British Airways",
+  "country": "United Kingdom",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "VS",
+  "name": "Virgin Atlantic",
+  "country": "United Kingdom",
+  "alliance": null
+},
+{
+  "iata": "AF",
+  "name": "Air France",
+  "country": "France",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "KL",
+  "name": "KLM Royal Dutch Airlines",
+  "country": "Netherlands",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "LH",
+  "name": "Lufthansa",
+  "country": "Germany",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "IB",
+  "name": "Iberia",
+  "country": "Spain",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "SN",
+  "name": "Brussels Airlines",
+  "country": "Belgium",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "AZ",
+  "name": "ITA Airways",
+  "country": "Italy",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "LX",
+  "name": "SWISS International Air Lines",
+  "country": "Switzerland",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "OS",
+  "name": "Austrian Airlines",
+  "country": "Austria",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "AY",
+  "name": "Finnair",
+  "country": "Finland",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "EK",
+  "name": "Emirates",
+  "country": "United Arab Emirates",
+  "alliance": null
+},
+{
+  "iata": "QR",
+  "name": "Qatar Airways",
+  "country": "Qatar",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "EK",
+  "name": "Emirates",
+  "country": "United Arab Emirates",
+  "alliance": null
+},
+{
+  "iata": "EY",
+  "name": "Etihad Airways",
+  "country": "United Arab Emirates",
+  "alliance": null
+},
+{
+  "iata": "QR",
+  "name": "Qatar Airways",
+  "country": "Qatar",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "QF",
+  "name": "Qantas",
+  "country": "Australia",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "VA",
+  "name": "Virgin Australia",
+  "country": "Australia",
+  "alliance": null
+},
+{
+  "iata": "NZ",
+  "name": "Air New Zealand",
+  "country": "New Zealand",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "SQ",
+  "name": "Singapore Airlines",
+  "country": "Singapore",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "CX",
+  "name": "Cathay Pacific",
+  "country": "Hong Kong SAR",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "CI",
+  "name": "China Airlines",
+  "country": "Taiwan",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "CZ",
+  "name": "China Southern Airlines",
+  "country": "China",
+  "alliance": null
+},
+{
+  "iata": "MU",
+  "name": "China Eastern Airlines",
+  "country": "China",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "NH",
+  "name": "All Nippon Airways (ANA)",
+  "country": "Japan",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "JL",
+  "name": "Japan Airlines",
+  "country": "Japan",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "KE",
+  "name": "Korean Air",
+  "country": "South Korea",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "OZ",
+  "name": "Asiana Airlines",
+  "country": "South Korea",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "AI",
+  "name": "Air India",
+  "country": "India",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "6E",
+  "name": "IndiGo",
+  "country": "India",
+  "alliance": null
+},
+{
+  "iata": "S7",
+  "name": "S7 Airlines",
+  "country": "Russia",
+  "alliance": null
+},
+{
+  "iata": "SU",
+  "name": "Aeroflot",
+  "country": "Russia",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "EK",
+  "name": "Emirates",
+  "country": "United Arab Emirates",
+  "alliance": null
+},
+{
+  "iata": "MS",
+  "name": "EgyptAir",
+  "country": "Egypt",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "SA",
+  "name": "South African Airways",
+  "country": "South Africa",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "KQ",
+  "name": "Kenya Airways",
+  "country": "Kenya",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "ET",
+  "name": "Ethiopian Airlines",
+  "country": "Ethiopia",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "TP",
+  "name": "TAP Air Portugal",
+  "country": "Portugal",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "TK",
+  "name": "Turkish Airlines",
+  "country": "Turkey",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "IB",
+  "name": "Iberia",
+  "country": "Spain",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "JJ",
+  "name": "LATAM Brasil",
+  "country": "Brazil",
+  "alliance": null
+},
+{
+  "iata": "G3",
+  "name": "Gol Transportes Aéreos",
+  "country": "Brazil",
+  "alliance": null
+},
+{
+  "iata": "AV",
+  "name": "Avianca",
+  "country": "Colombia",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "CM",
+  "name": "Copa Airlines",
+  "country": "Panama",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "AM",
+  "name": "Aeroméxico",
+  "country": "Mexico",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "AR",
+  "name": "Aerolíneas Argentinas",
+  "country": "Argentina",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "LA",
+  "name": "LATAM",
+  "country": "Chile",
+  "alliance": null
+},
+{
+  "iata": "B6",
+  "name": "JetBlue Airways",
+  "country": "United States",
+  "alliance": null
+},
+{
+  "iata": "F9",
+  "name": "Frontier Airlines",
+  "country": "United States",
+  "alliance": null
+},
+{
+  "iata": "WN",
+  "name": "Southwest Airlines",
+  "country": "United States",
+  "alliance": null
+},
+{
+  "iata": "AS",
+  "name": "Alaska Airlines",
+  "country": "United States",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "NZ",
+  "name": "Air New Zealand",
+  "country": "New Zealand",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "PR",
+  "name": "Philippine Airlines",
+  "country": "Philippines",
+  "alliance": null
+},
+{
+  "iata": "MH",
+  "name": "Malaysia Airlines",
+  "country": "Malaysia",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "TG",
+  "name": "Thai Airways International",
+  "country": "Thailand",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "VN",
+  "name": "Vietnam Airlines",
+  "country": "Vietnam",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "QZ",
+  "name": "Indonesia AirAsia",
+  "country": "Indonesia",
+  "alliance": null
+},
+{
+  "iata": "GA",
+  "name": "Garuda Indonesia",
+  "country": "Indonesia",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "UK",
+  "name": "Vistara",
+  "country": "India",
+  "alliance": null
+},
+{
+  "iata": "IX",
+  "name": "Air India Express",
+  "country": "India",
+  "alliance": null
+},
+{
+  "iata": "KC",
+  "name": "Dragonair (Cathay Dragon)",
+  "country": "Hong Kong",
+  "alliance": null
+},
+{
+  "iata": "PR",
+  "name": "Philippine Airlines",
+  "country": "Philippines",
+  "alliance": null
+},
+{
+  "iata": "HA",
+  "name": "Hawaiian Airlines",
+  "country": "United States",
+  "alliance": null
+},
+{
+  "iata": "BI",
+  "name": "Royal Brunei Airlines",
+  "country": "Brunei",
+  "alliance": null
+},
+{
+  "iata": "RJ",
+  "name": "Royal Jordanian",
+  "country": "Jordan",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "AT",
+  "name": "Royal Air Maroc",
+  "country": "Morocco",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "WY",
+  "name": "Oman Air",
+  "country": "Oman",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "PR",
+  "name": "Philippine Airlines",
+  "country": "Philippines",
+  "alliance": null
+},
+{
+  "iata": "SB",
+  "name": "Solomon Airlines",
+  "country": "Solomon Islands",
+  "alliance": null
+},
+{
+  "iata": "PX",
+  "name": "AirNiugini",
+  "country": "Papua New Guinea",
+  "alliance": null
+},
+{
+  "iata": "FJ",
+  "name": "Fiji Airways",
+  "country": "Fiji",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "BI",
+  "name": "Royal Brunei Airlines",
+  "country": "Brunei",
+  "alliance": null
+},
+{
+  "iata": "PS",
+  "name": "Ukraine International Airlines",
+  "country": "Ukraine",
+  "alliance": null
+},
+{
+  "iata": "VY",
+  "name": "Vueling",
+  "country": "Spain",
+  "alliance": null
+},
+{
+  "iata": "FR",
+  "name": "Ryanair",
+  "country": "Ireland",
+  "alliance": null
+},
+{
+  "iata": "U2",
+  "name": "easyJet",
+  "country": "United Kingdom",
+  "alliance": null
+},
+{
+  "iata": "TP",
+  "name": "TAP Air Portugal",
+  "country": "Portugal",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "EY",
+  "name": "Etihad Airways",
+  "country": "United Arab Emirates",
+  "alliance": null
+},
+{
+  "iata": "KU",
+  "name": "Kuwait Airways",
+  "country": "Kuwait",
+  "alliance": null
+},
+{
+  "iata": "RJ",
+  "name": "Royal Jordanian",
+  "country": "Jordan",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "IC",
+  "name": "Vistara (Tata SIA Airlines)",
+  "country": "India",
+  "alliance": null
+},
+{
+  "iata": "SB",
+  "name": "LATAM Airlines Group",
+  "country": "Various",
+  "alliance": null
+},
+{
+  "iata": "U6",
+  "name": "Ural Airlines",
+  "country": "Russia",
+  "alliance": null
+},
+{
+  "iata": "S7",
+  "name": "S7 Airlines",
+  "country": "Russia",
+  "alliance": null
+},
+{
+  "iata": "EF",
+  "name": "Equaflight Service",
+  "country": "Equatorial Guinea",
+  "alliance": null
+},
+{
+  "iata": "HF",
+  "name": "Hifly",
+  "country": "Portugal",
+  "alliance": null
+},
+{
+  "iata": "7Q",
+  "name": "Small Planet Airlines",
+  "country": "Lithuania/Poland (various)",
+  "alliance": null
+},
+{
+  "iata": "KM",
+  "name": "Air Malta",
+  "country": "Malta",
+  "alliance": null
+},
+{
+  "iata": "HV",
+  "name": "Transavia",
+  "country": "Netherlands/France",
+  "alliance": null
+},
+{
+  "iata": "SN",
+  "name": "Brussels Airlines",
+  "country": "Belgium",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "LO",
+  "name": "LOT Polish Airlines",
+  "country": "Poland",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "TP",
+  "name": "TAP Air Portugal",
+  "country": "Portugal",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "OK",
+  "name": "Czech Airlines",
+  "country": "Czech Republic",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "OS",
+  "name": "Austrian Airlines",
+  "country": "Austria",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "IB",
+  "name": "Iberia",
+  "country": "Spain",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "W6",
+  "name": "Wizz Air",
+  "country": "Hungary",
+  "alliance": null
+},
+{
+  "iata": "JU",
+  "name": "Air Serbia",
+  "country": "Serbia",
+  "alliance": null
+},
+{
+  "iata": "4U",
+  "name": "Germanwings",
+  "country": "Germany",
+  "alliance": null
+},
+{
+  "iata": "VY",
+  "name": "Vueling",
+  "country": "Spain",
+  "alliance": null
+},
+{
+  "iata": "AY",
+  "name": "Finnair",
+  "country": "Finland",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "IB",
+  "name": "Iberia Express",
+  "country": "Spain",
+  "alliance": null
+},
+{
+  "iata": "NX",
+  "name": "Air Macau",
+  "country": "Macau SAR",
+  "alliance": null
+},
+{
+  "iata": "PR",
+  "name": "Philippine Airlines",
+  "country": "Philippines",
+  "alliance": null
+},
+{
+  "iata": "KM",
+  "name": "Air Malta",
+  "country": "Malta",
+  "alliance": null
+},
+{
+  "iata": "BG",
+  "name": "Biman Bangladesh Airlines",
+  "country": "Bangladesh",
+  "alliance": null
+},
+{
+  "iata": "UL",
+  "name": "SriLankan Airlines",
+  "country": "Sri Lanka",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "PK",
+  "name": "Pakistan International Airlines",
+  "country": "Pakistan",
+  "alliance": null
+},
+{
+  "iata": "CX",
+  "name": "Cathay Pacific",
+  "country": "Hong Kong SAR",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "3K",
+  "name": "Jetstar Asia",
+  "country": "Singapore",
+  "alliance": null
+},
+{
+  "iata": "JQ",
+  "name": "Jetstar Airways",
+  "country": "Australia",
+  "alliance": null
+},
+{
+  "iata": "MF",
+  "name": "XiamenAir",
+  "country": "China",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "ZH",
+  "name": "Shenzhen Airlines",
+  "country": "China",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "BX",
+  "name": "Air Niugini",
+  "country": "Papua New Guinea",
+  "alliance": null
+},
+{
+  "iata": "CI",
+  "name": "China Airlines",
+  "country": "Taiwan",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "BR",
+  "name": "EVA Air",
+  "country": "Taiwan",
+  "alliance": "Star Alliance"
+},
+{
+  "iata": "KE",
+  "name": "Korean Air",
+  "country": "South Korea",
+  "alliance": "SkyTeam"
+},
+{
+  "iata": "WY",
+  "name": "Oman Air",
+  "country": "Oman",
+  "alliance": "Oneworld"
+},
+{
+  "iata": "KM",
+  "name": "Air Malta",
+  "country": "Malta",
+  "alliance": null
+},
+{
+  "iata": "S2",
+  "name": "Cebu Pacific",
+  "country": "Philippines",
+  "alliance": null
+},
+{
+  "iata": "5J",
+  "name": "Cebu Pacific",
+  "country": "Philippines",
+  "alliance": null
+},
+{
+  "iata": "HM",
+  "name": "Air Seychelles",
+  "country": "Seychelles",
+  "alliance": null
+},
+{
+  "iata": "QK",
+  "name": "BA CityFlyer",
+  "country": "United Kingdom",
+  "alliance": "Oneworld"
+}]

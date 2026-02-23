@@ -1,0 +1,127 @@
+services:
+
+  # ============================================================================
+  # Database
+  # ============================================================================
+  postgres:
+    image: postgres:15
+    container_name: redbud_${NODE_ENV}_db
+    ports:
+      - "${DB_PORT}:5432"
+    environment:
+      POSTGRES_DB: ${NODE_ENV}_${DB_NAME}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres.conf:/etc/postgresql/postgresql.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf -c listen_addresses='*'
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - redbud_network
+
+  # ============================================================================
+  # Cache
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: redbud_${NODE_ENV}_redis
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - redbud_network
+
+  # ============================================================================
+  # API (Express — never directly exposed to the host)
+  # ============================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${NODE_ENV:-development}
+      args:
+        NODE_ENV: ${NODE_ENV:-development}
+    container_name: redbud_${NODE_ENV}_api
+    expose:
+      - "${PORT}"
+    user: "node"
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${PORT}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${NODE_ENV}_${DB_NAME}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_MAX_AGE: ${SESSION_MAX_AGE:-86400000}
+      REDIS_ENABLED: ${REDIS_ENABLED:-false}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - redbud_network
+
+  # ============================================================================
+  # Frontend (Nginx — single entry point for browser traffic)
+  # In development: Nginx proxies Vite dev server (hot reload)
+  # In production:  Nginx serves built static files directly
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: ${NODE_ENV:-development}
+      args:
+        NODE_ENV: ${NODE_ENV:-development}
+    container_name: redbud_${NODE_ENV}_frontend
+    ports:
+      - "${APP_PORT}:80"
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      API_UPSTREAM: api:${PORT}
+    depends_on:
+      - api
+    restart: unless-stopped
+    volumes:
+      # Development hot reload — ignored by the production stage (build is baked in)
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.js:/app/vite.config.js
+      - /app/node_modules
+    networks:
+      - redbud_network
+
+volumes:
+  postgres_data:
+    name: redbud_${NODE_ENV}_postgres
+  redis_data:
+    name: redbud_${NODE_ENV}_redis
+
+networks:
+  redbud_network:
+    name: redbud_${NODE_ENV}_network
+    driver: bridge

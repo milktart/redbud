@@ -1,0 +1,43 @@
+# Environment files — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Node dependencies
+node_modules/
+
+# Logs
+*.log
+logs/
+duplicate-detection-debug.log
+
+# Build output / compiled files
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage / test output
+coverage/
+.nyc_output/
+
+# Backup files
+backups/
+
+# Docker volumes (local data)
+postgres-data/
+redis-data/
