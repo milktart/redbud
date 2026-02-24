@@ -634,12 +634,41 @@
   };
 
   /**
+   * Parse a UTC offset string like "UTC+5", "UTC-3", "UTC+5:30" into minutes.
+   * Returns null if not a UTC offset format.
+   */
+  function parseUtcOffsetMinutes(timezone) {
+    if (!timezone || !timezone.startsWith('UTC')) return null;
+    const match = timezone.match(/^UTC([+-])(\d+)(?::(\d+))?$/);
+    if (!match) return null;
+    const sign = match[1] === '+' ? 1 : -1;
+    const hours = parseInt(match[2], 10);
+    const minutes = match[3] ? parseInt(match[3], 10) : 0;
+    return sign * (hours * 60 + minutes);
+  }
+
+  /**
    * Convert a UTC ISO datetime string to { date: 'YYYY-MM-DD', time: 'HH:MM' }
    * in the given IANA timezone (or UTC if none provided).
+   * Also handles UTC+N / UTC-N offset strings (used by some airports).
    * Mirrors the backend utcToLocal() logic so round-trips are lossless.
    */
   function utcDateTimeParts(isoString, timezone) {
     if (!isoString) return { date: '', time: '' };
+
+    // Handle UTC+N / UTC-N offset strings that Intl doesn't recognise
+    const offsetMinutes = parseUtcOffsetMinutes(timezone);
+    if (offsetMinutes !== null) {
+      const localMs = new Date(isoString).getTime() + offsetMinutes * 60 * 1000;
+      const local = new Date(localMs);
+      const year  = local.getUTCFullYear();
+      const month = String(local.getUTCMonth() + 1).padStart(2, '0');
+      const day   = String(local.getUTCDate()).padStart(2, '0');
+      const hour  = String(local.getUTCHours()).padStart(2, '0');
+      const min   = String(local.getUTCMinutes()).padStart(2, '0');
+      return { date: `${year}-${month}-${day}`, time: `${hour}:${min}` };
+    }
+
     try {
       const dt = new Date(isoString);
       const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -1331,9 +1360,10 @@
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  function formatDateGroupHeader(date) {
-    if (!date) return '';
-    const d = new Date(date);
+  function formatDateGroupHeader(dateKey) {
+    if (!dateKey) return '';
+    // Parse YYYY-MM-DD as local calendar date to avoid UTC shift
+    const d = parseDateOnly(String(dateKey).slice(0, 10));
     const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
     const day = d.toLocaleDateString('en-US', { day: '2-digit' });
     const month = d.toLocaleDateString('en-US', { month: 'short' });
@@ -1365,6 +1395,16 @@
 
   function formatDateTime(dateStr, timezone) {
     if (!dateStr) return '';
+    // Handle UTC+N / UTC-N offset strings that Intl doesn't recognise
+    const offsetMinutes = parseUtcOffsetMinutes(timezone);
+    if (offsetMinutes !== null) {
+      const { date, time } = utcDateTimeParts(dateStr, timezone);
+      if (!date) return '';
+      const [, , day] = date.split('-');
+      const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const month = monthNames[parseInt(date.split('-')[1], 10) - 1];
+      return `${parseInt(day, 10)} ${month}, ${time}`;
+    }
     const d = new Date(dateStr);
     return d.toLocaleString('en-GB', {
       timeZone: safeTimezone(timezone),
@@ -1378,6 +1418,11 @@
 
   function formatTime24(dateStr, timezone) {
     if (!dateStr) return '';
+    // Handle UTC+N / UTC-N offset strings that Intl doesn't recognise
+    const offsetMinutes = parseUtcOffsetMinutes(timezone);
+    if (offsetMinutes !== null) {
+      return utcDateTimeParts(dateStr, timezone).time;
+    }
     const d = new Date(dateStr);
     return d.toLocaleString('en-GB', { timeZone: safeTimezone(timezone), hour: '2-digit', minute: '2-digit', hour12: false });
   }
@@ -1609,6 +1654,20 @@
     return timelineEntries;
   }
 
+  function getItemLocalTimezone(item) {
+    switch (item.itemType) {
+      case 'flight':
+      case 'transportation':
+        return item.originTimezone;
+      case 'hotel':
+      case 'event':
+      case 'car_rental':
+        return item.timezone;
+      default:
+        return null;
+    }
+  }
+
   function groupItemsByDate(items) {
     const grouped = {};
 
@@ -1616,21 +1675,31 @@
       const dateTime = getItemSortDateTime(item);
       if (!dateTime) continue;
 
-      const date = new Date(dateTime);
-      const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      // Use the item's local timezone so we group by local date, not UTC date.
+      // A flight at 23:00 UTC-5 (stored as 04:00 UTC next day) should appear
+      // on the departure date, not the following UTC day.
+      const itemTimezone = getItemLocalTimezone(item);
+      const { date: localDate, time: localTime } = utcDateTimeParts(dateTime, itemTimezone);
+      const dateKey = localDate || new Date(dateTime).toISOString().split('T')[0];
 
       if (!grouped[dateKey]) {
         grouped[dateKey] = {
-          date: date,
+          dateKey,
           items: []
         };
       }
 
-      grouped[dateKey].items.push(item);
+      // Store the local sort key alongside the item so we can sort within groups
+      grouped[dateKey].items.push({ item, localTime: localTime || '00:00' });
     }
 
-    // Convert to array and sort by date
-    return Object.values(grouped).sort((a, b) => a.date - b.date);
+    // Sort items within each group by local time, then unwrap
+    const result = Object.values(grouped).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+    result.forEach(group => {
+      group.items.sort((a, b) => a.localTime.localeCompare(b.localTime));
+      group.items = group.items.map(e => e.item);
+    });
+    return result;
   }
 
   function getFriendsTimelineEntries() {
@@ -2095,7 +2164,7 @@
                   <!-- Items grouped by date -->
                   {#if entry.itemsByDate.length > 0}
                     {#each entry.itemsByDate as dateGroup}
-                      <div class="date-group-header">{formatDateGroupHeader(dateGroup.date)}</div>
+                      <div class="date-group-header">{formatDateGroupHeader(dateGroup.dateKey)}</div>
                       {#each dateGroup.items as item}
                         <div class="item-row" class:selected={selectedItem?.id === item.id} class:tentative={item.isConfirmed === false} on:click={() => handleItemClick(item)}>
                           <div class="item-icon-wrap">
@@ -3093,7 +3162,7 @@
 
                     {#if entry.itemsByDate.length > 0}
                       {#each entry.itemsByDate as dateGroup}
-                        <div class="date-group-header">{formatDateGroupHeader(dateGroup.date)}</div>
+                        <div class="date-group-header">{formatDateGroupHeader(dateGroup.dateKey)}</div>
                         {#each dateGroup.items as item}
                           <div class="item-row" class:tentative={item.isConfirmed === false}>
                             <div class="item-icon-wrap">
