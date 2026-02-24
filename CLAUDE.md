@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Documentation
+
+All markdown documentation files (READMEs, migration guides, architecture summaries, etc.) must be placed in the `docs/` directory — **never in the repository root or scattered throughout the codebase**. The only exception is this `CLAUDE.md` file itself.
+
+- `docs/` — API docs, architecture guides, general references
+- `docs/archive/` — Historical migration notes, refactoring summaries, completed phase docs
+- `docs/frontend/` — Frontend-specific documentation
+
 ## Project Overview
 
 This is a travel planning REST API built with Node.js, Express, PostgreSQL, and Redis. The application manages trips, travel items (flights, hotels, events, transportation, car rentals), travel companions, and companion permissions with a sophisticated cascading system.
