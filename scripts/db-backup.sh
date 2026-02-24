@@ -1,5 +1,5 @@
 #!/bin/bash
-# Database backup script for Bluebonnet Travel Planner
+# Database backup script for Redbud Travel Planner
 # Usage: ./scripts/db-backup.sh [environment]
 # Example: ./scripts/db-backup.sh production
 
@@ -7,7 +7,7 @@ set -e
 
 # Configuration
 ENVIRONMENT=${1:-production}
-BACKUP_DIR=${BACKUP_DIR:-/backups/bluebonnet}
+BACKUP_DIR=${BACKUP_DIR:-/backups/redbud}
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
 
@@ -28,7 +28,7 @@ else
     BACKUP_FILE="$BACKUP_DIR/dev_travel_planner_$TIMESTAMP.sql"
 fi
 
-echo -e "${YELLOW}=== Bluebonnet Database Backup ===${NC}"
+echo -e "${YELLOW}=== Redbud Database Backup ===${NC}"
 echo "Environment: $ENVIRONMENT"
 echo "Database: $DB_NAME"
 echo "Timestamp: $TIMESTAMP"

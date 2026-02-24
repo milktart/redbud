@@ -1,4 +1,4 @@
-# Bluebonnet UI Implementation
+# Redbud UI Implementation
 
 A simple, modular UI following the MVCS (Model-View-Controller-Service) architecture.
 

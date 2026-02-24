@@ -1,6 +1,6 @@
 # Design System
 
-This document describes the design system for the Bluebonnet Travel Planner frontend. All design tokens are defined as CSS custom properties in `src/app.css` and should be used consistently across all components.
+This document describes the design system for the Redbud Travel Planner frontend. All design tokens are defined as CSS custom properties in `src/app.css` and should be used consistently across all components.
 
 ## Usage
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deployment script for Bluebonnet Travel Planner
+# Deployment script for Redbud Travel Planner
 # Usage: ./scripts/deploy.sh [environment]
 # Example: ./scripts/deploy.sh production
 
@@ -27,7 +27,7 @@ else
 fi
 
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║  Bluebonnet Travel Planner Deployment     ║${NC}"
+echo -e "${BLUE}║  Redbud Travel Planner Deployment         ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
 echo ""
 echo "Environment: $ENVIRONMENT"

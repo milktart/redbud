@@ -1,7 +1,7 @@
 # Responsive Design Implementation
 
 ## Overview
-The Bluebonnet Travel Planner frontend has been made fully responsive across all device sizes, from mobile phones to large desktop displays.
+The Redbud Travel Planner frontend has been made fully responsive across all device sizes, from mobile phones to large desktop displays.
 
 ## Breakpoints
 

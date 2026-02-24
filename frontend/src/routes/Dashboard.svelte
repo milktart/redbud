@@ -4664,8 +4664,6 @@
   }
 
   .filter-section-title {
-    font-size: 0.9rem;
-    font-weight: 600;
     color: var(--dark-text);
     margin: 0 0 var(--spacing-md) 0;
   }
@@ -5164,11 +5162,6 @@
 
   .settings-section-title {
     margin: 0 0 var(--spacing-xs) 0;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--gray-text);
   }
 
   .settings-option {
@@ -5331,15 +5324,6 @@
     border-bottom: none;
     margin-bottom: 0;
     padding-bottom: 0;
-  }
-
-  .manage-data-section-title {
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--gray-text);
-    margin: 0;
   }
 
   /* Import Panel */
@@ -6285,8 +6269,6 @@
   }
 
   .attendee-section-title {
-    font-size: 0.85rem;
-    font-weight: 600;
     color: var(--dark-text);
     margin: 0 0 var(--spacing-sm) 0;
   }

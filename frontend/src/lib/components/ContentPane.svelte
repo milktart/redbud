@@ -31,6 +31,15 @@
     transition: width 0.3s ease-in-out;
   }
 
+  :global(.content-pane h4) {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--gray-text);
+    margin: 0;
+  }
+
   @media (max-width: 640px) {
     .content-pane {
       top: var(--mobile-top, 2.5vh);

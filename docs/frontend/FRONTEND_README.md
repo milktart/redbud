@@ -1,4 +1,4 @@
-# Bluebonnet Travel Planner - Svelte Frontend
+# Redbud Travel Planner - Svelte Frontend
 
 Modern Svelte frontend with Vite
 

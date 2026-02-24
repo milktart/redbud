@@ -3,7 +3,7 @@
 # Script to replace console.log/error/warn with Winston logger in controllers
 # Phase 2 - Code Quality Improvement
 
-CONTROLLERS_DIR="/home/user/bluebonnet/controllers"
+CONTROLLERS_DIR="/home/home/redbud-dev/controllers"
 
 # Find all JS files in controllers with console statements
 files=$(grep -rl "console\." "$CONTROLLERS_DIR" --include="*.js")

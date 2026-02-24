@@ -1,7 +1,7 @@
 #!/bin/bash
-# Database restore script for Bluebonnet Travel Planner
+# Database restore script for Redbud Travel Planner
 # Usage: ./scripts/db-restore.sh [backup-file] [environment]
-# Example: ./scripts/db-restore.sh /backups/bluebonnet/prod_travel_planner_20251119_120000.sql.gz production
+# Example: ./scripts/db-restore.sh /backups/redbud/prod_travel_planner_20251119_120000.sql.gz production
 
 set -e
 
@@ -19,7 +19,7 @@ NC='\033[0m' # No Color
 if [ -z "$BACKUP_FILE" ]; then
     echo -e "${RED}ERROR: No backup file specified${NC}"
     echo "Usage: ./scripts/db-restore.sh [backup-file] [environment]"
-    echo "Example: ./scripts/db-restore.sh /backups/bluebonnet/prod_travel_planner_20251119_120000.sql.gz production"
+    echo "Example: ./scripts/db-restore.sh /backups/redbud/prod_travel_planner_20251119_120000.sql.gz production"
     exit 1
 fi
 
@@ -38,7 +38,7 @@ else
     DB_NAME="dev_travel_planner"
 fi
 
-echo -e "${YELLOW}=== Bluebonnet Database Restore ===${NC}"
+echo -e "${YELLOW}=== Redbud Database Restore ===${NC}"
 echo "Environment: $ENVIRONMENT"
 echo "Database: $DB_NAME"
 echo "Backup file: $BACKUP_FILE"
