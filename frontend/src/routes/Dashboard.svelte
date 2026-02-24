@@ -239,6 +239,7 @@
 
   let companions = [];
   let companionsLoading = false;
+  let selectedCompanionIds = new Set();
   let addingCompanion = false;
   let addCompanionEmail = '';
   let addCompanionFirstName = '';
@@ -525,9 +526,6 @@
     car_rental: true,
     event: true
   };
-
-  let showCalendarFilters = window.innerWidth > 640;
-  let showMobileFilterSheet = false;
 
   // Reactive statement to update map markers when items or timeline tab changes
   $: if (map && L && (items || activeTimelineTab || activePane || trips || friendsTrips || attendeeStandaloneItems || companionStandaloneItems)) {
@@ -1282,7 +1280,7 @@
     user.set(userData);
     isAuthenticated.set(true);
 
-    await loadTripsAndItems();
+    await Promise.all([loadTripsAndItems(), loadCompanions()]);
 
     L = (await import('leaflet')).default;
 
@@ -3697,121 +3695,105 @@
   {/if}
 
   {#if activePane === 'calendar'}
-    <ContentPane columns={showCalendarFilters ? 4 : 3}>
-      <!-- Filter column — desktop only -->
-      {#if showCalendarFilters}
+    <ContentPane columns={4}>
+      <!-- Filter column -->
       <PaneColumn span={1}>
         <h3 class="pane-title">Filters</h3>
-
-        <div class="filter-section">
-          <h4 class="filter-section-title">Show on Calendar</h4>
-          <div class="filter-checkboxes">
-            <label class="filter-checkbox">
-              <input type="checkbox" checked={visibleItemTypes.trip} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, trip: e.target.checked }; }} />
-              <span class="checkbox-label">
-                <span class="checkbox-color" style="background: #3b82f6;"></span>
-                Trip
-              </span>
-            </label>
-            <label class="filter-checkbox">
-              <input type="checkbox" checked={visibleItemTypes.flight} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, flight: e.target.checked }; }} />
-              <span class="checkbox-label">
-                <span class="checkbox-color" style="background: #10b981;"></span>
-                Flight
-              </span>
-            </label>
-            <label class="filter-checkbox">
-              <input type="checkbox" checked={visibleItemTypes.hotel} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, hotel: e.target.checked }; }} />
-              <span class="checkbox-label">
-                <span class="checkbox-color" style="background: #f59e0b;"></span>
-                Hotel
-              </span>
-            </label>
-            <label class="filter-checkbox">
-              <input type="checkbox" checked={visibleItemTypes.transportation} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, transportation: e.target.checked }; }} />
-              <span class="checkbox-label">
-                <span class="checkbox-color" style="background: #8b5cf6;"></span>
-                Transportation
-              </span>
-            </label>
-            <label class="filter-checkbox">
-              <input type="checkbox" checked={visibleItemTypes.car_rental} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, car_rental: e.target.checked }; }} />
-              <span class="checkbox-label">
-                <span class="checkbox-color" style="background: #ec4899;"></span>
-                Car Rental
-              </span>
-            </label>
-            <label class="filter-checkbox">
-              <input type="checkbox" checked={visibleItemTypes.event} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, event: e.target.checked }; }} />
-              <span class="checkbox-label">
-                <span class="checkbox-color" style="background: #06b6d4;"></span>
-                Event
-              </span>
-            </label>
-          </div>
-        </div>
-      </PaneColumn>
-      {/if}
-
-      <!-- Calendar column -->
-      <PaneColumn span={3} divider={showCalendarFilters}>
-        <div class="calendar-toolbar">
-          <button class="nav-square calendar-filter-toggle" on:click={() => showMobileFilterSheet = !showMobileFilterSheet} title="Toggle filters">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="4" y1="6" x2="20" y2="6"/>
-              <line x1="8" y1="12" x2="16" y2="12"/>
-              <line x1="11" y1="18" x2="13" y2="18"/>
-            </svg>
+        <div class="type-filter-strip">
+          <button
+            class="type-filter-btn"
+            class:type-filter-off={!visibleItemTypes.trip}
+            style="--filter-color: #3b82f6"
+            on:click={() => { visibleItemTypes = { ...visibleItemTypes, trip: !visibleItemTypes.trip }; }}
+            title="Trip"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7m0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5"/></svg>
+          </button>
+          <button
+            class="type-filter-btn"
+            class:type-filter-off={!visibleItemTypes.flight}
+            style="--filter-color: #10b981"
+            on:click={() => { visibleItemTypes = { ...visibleItemTypes, flight: !visibleItemTypes.flight }; }}
+            title="Flight"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>
+          </button>
+          <button
+            class="type-filter-btn"
+            class:type-filter-off={!visibleItemTypes.hotel}
+            style="--filter-color: #f59e0b"
+            on:click={() => { visibleItemTypes = { ...visibleItemTypes, hotel: !visibleItemTypes.hotel }; }}
+            title="Hotel"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3m12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9a4 4 0 0 0-4-4"/></svg>
+          </button>
+          <button
+            class="type-filter-btn"
+            class:type-filter-off={!visibleItemTypes.transportation}
+            style="--filter-color: #8b5cf6"
+            on:click={() => { visibleItemTypes = { ...visibleItemTypes, transportation: !visibleItemTypes.transportation }; }}
+            title="Transportation"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4zm3.5 1a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M6 10V6h12v4z"/></svg>
+          </button>
+          <button
+            class="type-filter-btn"
+            class:type-filter-off={!visibleItemTypes.car_rental}
+            style="--filter-color: #ec4899"
+            on:click={() => { visibleItemTypes = { ...visibleItemTypes, car_rental: !visibleItemTypes.car_rental }; }}
+            title="Car Rental"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-8zM6.5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m11 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M5 11l1.5-4.5h11L19 11z"/></svg>
+          </button>
+          <button
+            class="type-filter-btn"
+            class:type-filter-off={!visibleItemTypes.event}
+            style="--filter-color: #06b6d4"
+            on:click={() => { visibleItemTypes = { ...visibleItemTypes, event: !visibleItemTypes.event }; }}
+            title="Event"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5zM16 1v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1zm3 18H5V8h14z"/></svg>
           </button>
         </div>
+
+        {@const sharingCompanions = companions.filter(c => c.reversePermissionLevel && c.reversePermissionLevel !== 'none')}
+        {#if sharingCompanions.length > 0}
+          <h4 class="filter-section-label">Friends</h4>
+          <div class="companion-filter-list">
+            {#each sharingCompanions as c (c.companionUser.id)}
+              {@const uid = c.companionUser.id}
+              {@const selected = selectedCompanionIds.has(uid)}
+              {@const initials = ((c.companionUser.firstName?.[0] ?? '') + (c.companionUser.lastName?.[0] ?? '')).toUpperCase() || c.companionUser.email?.[0]?.toUpperCase() || '?'}
+              {@const name = ((c.companionUser.firstName ?? '') + ' ' + (c.companionUser.lastName ?? '')).trim() || c.companionUser.email}
+              <button
+                class="companion-filter-btn"
+                class:companion-filter-selected={selected}
+                title={name}
+                on:click={() => {
+                  const next = new Set(selectedCompanionIds);
+                  if (next.has(uid)) next.delete(uid); else next.add(uid);
+                  selectedCompanionIds = next;
+                }}
+              >
+                <span class="companion-filter-avatar">{initials}</span>
+                <span class="companion-filter-name">{name}</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </PaneColumn>
+
+      <!-- Calendar column -->
+      <PaneColumn span={3} divider={true}>
         <CalendarView
           {trips}
           standaloneItems={[...standaloneItems, ...attendeeStandaloneItems]}
+          companionTrips={friendsTrips.filter(t => t.user && selectedCompanionIds.has(t.user.id))}
+          companionStandaloneItems={companionStandaloneItems.filter(i => i.user && selectedCompanionIds.has(i.user.id))}
           {visibleItemTypes}
         />
       </PaneColumn>
     </ContentPane>
-
-    <!-- Mobile filter bottom sheet -->
-    {#if showMobileFilterSheet}
-      <div class="filter-sheet-backdrop" on:click={() => showMobileFilterSheet = false}></div>
-    {/if}
-    <div class="filter-sheet" class:filter-sheet-open={showMobileFilterSheet}>
-      <div class="filter-sheet-handle"></div>
-      <div class="filter-sheet-header">
-        <h3 class="pane-title" style="margin:0">Filters</h3>
-        <button class="close-btn" on:click={() => showMobileFilterSheet = false}>✕</button>
-      </div>
-      <div class="filter-section">
-        <h4 class="filter-section-title">Show on Calendar</h4>
-        <div class="filter-checkboxes">
-          <label class="filter-checkbox">
-            <input type="checkbox" checked={visibleItemTypes.trip} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, trip: e.target.checked }; }} />
-            <span class="checkbox-label"><span class="checkbox-color" style="background: #3b82f6;"></span>Trip</span>
-          </label>
-          <label class="filter-checkbox">
-            <input type="checkbox" checked={visibleItemTypes.flight} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, flight: e.target.checked }; }} />
-            <span class="checkbox-label"><span class="checkbox-color" style="background: #10b981;"></span>Flight</span>
-          </label>
-          <label class="filter-checkbox">
-            <input type="checkbox" checked={visibleItemTypes.hotel} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, hotel: e.target.checked }; }} />
-            <span class="checkbox-label"><span class="checkbox-color" style="background: #f59e0b;"></span>Hotel</span>
-          </label>
-          <label class="filter-checkbox">
-            <input type="checkbox" checked={visibleItemTypes.transportation} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, transportation: e.target.checked }; }} />
-            <span class="checkbox-label"><span class="checkbox-color" style="background: #8b5cf6;"></span>Transportation</span>
-          </label>
-          <label class="filter-checkbox">
-            <input type="checkbox" checked={visibleItemTypes.car_rental} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, car_rental: e.target.checked }; }} />
-            <span class="checkbox-label"><span class="checkbox-color" style="background: #ec4899;"></span>Car Rental</span>
-          </label>
-          <label class="filter-checkbox">
-            <input type="checkbox" checked={visibleItemTypes.event} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, event: e.target.checked }; }} />
-            <span class="checkbox-label"><span class="checkbox-color" style="background: #06b6d4;"></span>Event</span>
-          </label>
-        </div>
-      </div>
-    </div>
   {/if}
 
   {#if activePane === 'settings'}
@@ -4521,35 +4503,105 @@
     border-color: var(--primary-light);
   }
 
-  .filter-section {
-    margin-top: var(--spacing-lg);
+  .type-filter-strip {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
   }
 
-  .calendar-toolbar {
-    display: none;
-    margin-bottom: var(--spacing-md);
-  }
-
-  @media (max-width: 640px) {
-    .calendar-toolbar {
-      display: flex;
-      align-items: center;
-    }
-  }
-
-  .calendar-filter-toggle {
-    width: 36px;
-    height: 36px;
+  .type-filter-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: clamp(28px, 18%, 44px);
+    aspect-ratio: 1;
     border-radius: var(--radius-md);
+    border: none;
+    background: color-mix(in srgb, var(--filter-color) 15%, transparent);
+    color: var(--filter-color);
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s;
+    padding: 0;
+    min-width: 0;
   }
 
-  .calendar-filter-toggle svg {
-    width: 16px;
-    height: 16px;
+  .type-filter-btn svg {
+    width: 55%;
+    height: 55%;
+    display: block;
+  }
+
+  .type-filter-btn:hover {
+    background: color-mix(in srgb, var(--filter-color) 25%, transparent);
+  }
+
+  .type-filter-btn.type-filter-off {
+    opacity: 0.3;
+    background: var(--glass-bg-light);
+    color: var(--text-muted);
+  }
+
+  .filter-section-label {
+    margin: var(--spacing-lg) 0 var(--spacing-sm);
+  }
+
+  .companion-filter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .companion-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    width: 100%;
+    padding: var(--spacing-sm);
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    opacity: 0.45;
+    transition: opacity 0.15s, background 0.15s;
+  }
+
+  .companion-filter-btn:hover {
+    background: var(--glass-bg-light);
+    opacity: 0.75;
+  }
+
+  .companion-filter-btn.companion-filter-selected {
+    opacity: 1;
+    background: var(--glass-bg-medium);
+  }
+
+  .companion-filter-avatar {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .companion-filter-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--dark-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* Filter bottom sheet — mobile only */
-  .filter-sheet,
   .edit-sheet {
     display: none;
   }
@@ -4621,32 +4673,6 @@
   }
 
   @media (max-width: 640px) {
-    .filter-sheet-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.35);
-      z-index: calc(var(--z-modal) - 1);
-    }
-
-    .filter-sheet {
-      display: block;
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: var(--z-modal);
-      background: var(--white);
-      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-      padding: var(--spacing-lg) var(--spacing-2xl) var(--spacing-4xl);
-      box-shadow: var(--shadow-top);
-      transform: translateY(100%);
-      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-    }
-
-    .filter-sheet.filter-sheet-open {
-      transform: translateY(0);
-    }
-
     .filter-sheet-handle {
       width: 36px;
       height: 4px;
@@ -4661,52 +4687,6 @@
       justify-content: space-between;
       margin-bottom: var(--spacing-lg);
     }
-  }
-
-  .filter-section-title {
-    color: var(--dark-text);
-    margin: 0 0 var(--spacing-md) 0;
-  }
-
-  .filter-checkboxes {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-  }
-
-  .filter-checkbox {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    padding: var(--spacing-sm);
-    border-radius: var(--radius-sm);
-    transition: background-color 0.2s;
-  }
-
-  .filter-checkbox:hover {
-    background: var(--glass-bg-light);
-  }
-
-  .filter-checkbox input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    margin-right: var(--spacing-sm);
-    cursor: pointer;
-  }
-
-  .checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--dark-text);
-  }
-
-  .checkbox-color {
-    width: 16px;
-    height: 16px;
-    border-radius: var(--radius-sm);
   }
 
   .edit-header {

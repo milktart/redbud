@@ -3,6 +3,8 @@
 
   export let trips = [];
   export let standaloneItems = [];
+  export let companionTrips = [];
+  export let companionStandaloneItems = [];
   export let visibleItemTypes = {
     trip: true, flight: true, hotel: true,
     transportation: true, car_rental: true, event: true
@@ -113,6 +115,73 @@
           endDate,
           colorClass: getItemColorClass(item.itemType),
           tentative: item.isConfirmed === false,
+          data: item
+        });
+      }
+    });
+
+    // Process companion trips
+    companionTrips.forEach(trip => {
+      if (trip.departureDate && visibleItemTypes.trip) {
+        const startDate = parseDateOnly(trip.departureDate);
+        const endDate = trip.returnDate ? parseDateOnly(trip.returnDate) : startDate;
+        events.push({
+          id: `c-${trip.id}`,
+          type: 'trip',
+          name: trip.name,
+          startDate,
+          endDate,
+          colorClass: 'color-trip',
+          tentative: trip.isConfirmed === false,
+          companion: true,
+          data: trip
+        });
+      }
+
+      const nestedItems = [
+        ...(trip.flights || []).map(i => ({ ...i, itemType: 'flight' })),
+        ...(trip.hotels || []).map(i => ({ ...i, itemType: 'hotel' })),
+        ...(trip.transportation || []).map(i => ({ ...i, itemType: 'transportation' })),
+        ...(trip.carRentals || []).map(i => ({ ...i, itemType: 'car_rental' })),
+        ...(trip.events || []).map(i => ({ ...i, itemType: 'event' })),
+      ];
+      nestedItems.forEach(item => {
+        if (!visibleItemTypes[item.itemType]) return;
+        const startDate = getItemStartDate(item);
+        const endDate = getItemEndDate(item) || startDate;
+        if (!startDate) return;
+        events.push({
+          id: `c-${item.id}`,
+          type: 'item',
+          itemType: item.itemType,
+          name: getItemLabel(item),
+          startDate,
+          endDate,
+          colorClass: getItemColorClass(item.itemType),
+          tentative: item.isConfirmed === false,
+          companion: true,
+          data: item,
+          tripId: trip.id
+        });
+      });
+    });
+
+    // Process companion standalone items
+    companionStandaloneItems.forEach(item => {
+      if (!visibleItemTypes[item.itemType]) return;
+      const startDate = getItemStartDate(item);
+      const endDate = getItemEndDate(item) || startDate;
+      if (startDate) {
+        events.push({
+          id: `c-${item.id}`,
+          type: 'standalone',
+          itemType: item.itemType,
+          name: getItemLabel(item),
+          startDate,
+          endDate,
+          colorClass: getItemColorClass(item.itemType),
+          tentative: item.isConfirmed === false,
+          companion: true,
           data: item
         });
       }
@@ -285,7 +354,7 @@
   }
 
   $: calendarMonths = generateCalendarMonths();
-  $: calendarEvents = (trips, standaloneItems, visibleItemTypes, processCalendarEvents());
+  $: calendarEvents = (trips, standaloneItems, companionTrips, companionStandaloneItems, visibleItemTypes, processCalendarEvents());
   $: monthBars = calendarMonths.map(month => calculateBarsForMonth(month, calendarEvents));
 
   onMount(() => {
@@ -342,6 +411,7 @@
                 <div
                   class="event-bar {bar.colorClass}"
                   class:tentative={bar.tentative}
+                  class:companion={bar.companion}
                   style="
                     left: {((bar.startDay - 1) / 31) * 100}%;
                     width: calc({(bar.width / 31) * 100}% - 1px);
@@ -499,6 +569,11 @@
   .event-bar-text {
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .event-bar.companion {
+    opacity: 0.6;
+    border: 1px dashed rgba(255, 255, 255, 0.6);
   }
 
   /* Scrollbar styling */
