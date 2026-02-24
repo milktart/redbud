@@ -172,8 +172,9 @@ exports.updateMe = async (req, res) => {
  */
 exports.exportData = async (req, res) => {
   try {
-    const { Trip, Flight, Hotel, Transportation, CarRental, Event, Companion, Attendee, User } = require('../models');
+    const { Trip, Flight, Hotel, Transportation, CarRental, Event, Companion, Attendee, User, Voucher } = require('../models');
     const userId = req.user.id;
+    const { Op } = require('sequelize');
 
     const trips = await Trip.findAll({
       where: { userId },
@@ -193,7 +194,7 @@ exports.exportData = async (req, res) => {
       order: [['departureDate', 'ASC']],
     });
 
-    // Helper to get item attendees keyed by itemId
+    // Collect all trip-item IDs and standalone item IDs for attendee lookup
     const allItemIds = { flight: [], hotel: [], transportation: [], car_rental: [], event: [] };
     for (const trip of trips) {
       for (const f of trip.flights ?? []) allItemIds.flight.push(f.id);
@@ -203,14 +204,33 @@ exports.exportData = async (req, res) => {
       for (const e of trip.events ?? []) allItemIds.event.push(e.id);
     }
 
-    const { Op } = require('sequelize');
-    const itemAttendees = await Attendee.findAll({
-      where: {
-        itemType: { [Op.in]: ['flight', 'hotel', 'transportation', 'car_rental', 'event'] },
-        itemId: { [Op.in]: Object.values(allItemIds).flat() },
-      },
-      include: [{ model: User, as: 'user', attributes: ['email', 'firstName', 'lastName'] }],
-    });
+    // Fetch standalone items (not linked to any trip)
+    const [standaloneFlights, standaloneHotels, standaloneTransportation, standaloneCarRentals, standaloneEvents] =
+      await Promise.all([
+        Flight.findAll({ where: { userId, tripId: null }, order: [['departureDateTime', 'ASC']] }),
+        Hotel.findAll({ where: { userId, tripId: null }, order: [['checkInDateTime', 'ASC']] }),
+        Transportation.findAll({ where: { userId, tripId: null }, order: [['departureDateTime', 'ASC']] }),
+        CarRental.findAll({ where: { userId, tripId: null }, order: [['pickupDateTime', 'ASC']] }),
+        Event.findAll({ where: { userId, tripId: null }, order: [['startDateTime', 'ASC']] }),
+      ]);
+
+    for (const f of standaloneFlights) allItemIds.flight.push(f.id);
+    for (const h of standaloneHotels) allItemIds.hotel.push(h.id);
+    for (const t of standaloneTransportation) allItemIds.transportation.push(t.id);
+    for (const c of standaloneCarRentals) allItemIds.car_rental.push(c.id);
+    for (const e of standaloneEvents) allItemIds.event.push(e.id);
+
+    // Fetch attendees for all items in one query
+    const allIds = Object.values(allItemIds).flat();
+    const itemAttendees = allIds.length > 0
+      ? await Attendee.findAll({
+          where: {
+            itemType: { [Op.in]: ['flight', 'hotel', 'transportation', 'car_rental', 'event'] },
+            itemId: { [Op.in]: allIds },
+          },
+          include: [{ model: User, as: 'user', attributes: ['email', 'firstName', 'lastName'] }],
+        })
+      : [];
 
     // Group item attendees by itemId
     const attendeesByItemId = {};
@@ -253,6 +273,14 @@ exports.exportData = async (req, res) => {
       };
     });
 
+    const standaloneData = {
+      flights: standaloneFlights.map((i) => stripItem(i.toJSON())),
+      hotels: standaloneHotels.map((i) => stripItem(i.toJSON())),
+      transportation: standaloneTransportation.map((i) => stripItem(i.toJSON())),
+      carRentals: standaloneCarRentals.map((i) => stripItem(i.toJSON())),
+      events: standaloneEvents.map((i) => stripItem(i.toJSON())),
+    };
+
     // Export companions (by email so they can be re-linked in a different env)
     const companions = await Companion.findAll({
       where: { userId, permissionLevel: { [Op.ne]: 'none' } },
@@ -265,10 +293,19 @@ exports.exportData = async (req, res) => {
       permissionLevel: c.permissionLevel,
     }));
 
+    // Export vouchers (strip parentVoucherId — the referenced ID won't exist in a restored account)
+    const vouchers = await Voucher.findAll({ where: { userId }, order: [['createdAt', 'ASC']] });
+    const vouchersData = vouchers.map((v) => {
+      const { id, userId: _u, parentVoucherId: _p, createdAt, updatedAt, ...rest } = v.toJSON();
+      return { ...rest, _sourceId: id };
+    });
+
     const exportData = {
       exportedAt: new Date().toISOString(),
       companions: companionsData,
       trips: tripsData,
+      standalone: standaloneData,
+      vouchers: vouchersData,
     };
     res.setHeader('Content-Disposition', 'attachment; filename="travel-data.json"');
     res.setHeader('Content-Type', 'application/json');
@@ -286,15 +323,16 @@ exports.exportData = async (req, res) => {
  */
 exports.importPreview = async (req, res) => {
   try {
-    const { Trip, Flight, Hotel, Transportation, CarRental, Event } = require('../models');
+    const { Trip, Flight, Hotel, Transportation, CarRental, Event, Voucher } = require('../models');
+    const { Op } = require('sequelize');
     const userId = req.user.id;
-    const { trips: importedTrips } = req.body;
+    const { trips: importedTrips, standalone: importedStandalone, vouchers: importedVouchers } = req.body;
 
     if (!Array.isArray(importedTrips)) {
       return apiResponse.badRequest(res, 'Request body must contain a "trips" array');
     }
 
-    // Load all existing data for the current user (same query as exportData)
+    // Load all existing data for the current user
     const existingTrips = await Trip.findAll({
       where: { userId },
       include: [
@@ -306,29 +344,37 @@ exports.importPreview = async (req, res) => {
       ],
     });
 
-    // Flatten all existing items per type for cross-trip duplicate checking
-    const allExistingFlights = existingTrips.flatMap((t) => t.flights ?? []);
-    const allExistingHotels = existingTrips.flatMap((t) => t.hotels ?? []);
-    const allExistingTransportation = existingTrips.flatMap((t) => t.transportation ?? []);
-    const allExistingCarRentals = existingTrips.flatMap((t) => t.carRentals ?? []);
-    const allExistingEvents = existingTrips.flatMap((t) => t.events ?? []);
+    // Flatten all existing items per type for duplicate checking (trips + standalone)
+    const [existingStandaloneFlights, existingStandaloneHotels, existingStandaloneTransportation, existingStandaloneCarRentals, existingStandaloneEvents] =
+      await Promise.all([
+        Flight.findAll({ where: { userId, tripId: null } }),
+        Hotel.findAll({ where: { userId, tripId: null } }),
+        Transportation.findAll({ where: { userId, tripId: null } }),
+        CarRental.findAll({ where: { userId, tripId: null } }),
+        Event.findAll({ where: { userId, tripId: null } }),
+      ]);
+
+    const allExistingFlights = [...existingTrips.flatMap((t) => t.flights ?? []), ...existingStandaloneFlights];
+    const allExistingHotels = [...existingTrips.flatMap((t) => t.hotels ?? []), ...existingStandaloneHotels];
+    const allExistingTransportation = [...existingTrips.flatMap((t) => t.transportation ?? []), ...existingStandaloneTransportation];
+    const allExistingCarRentals = [...existingTrips.flatMap((t) => t.carRentals ?? []), ...existingStandaloneCarRentals];
+    const allExistingEvents = [...existingTrips.flatMap((t) => t.events ?? []), ...existingStandaloneEvents];
+
+    const annotateItems = (items, checkFn, existingItems) =>
+      (items ?? []).map((item, itemIndex) => {
+        const dup = checkFn(item, existingItems);
+        return {
+          ...item,
+          _importIndex: itemIndex,
+          isDuplicate: dup.isDuplicate,
+          duplicateOf: dup.isDuplicate
+            ? { id: dup.duplicateOf?.id, name: dup.duplicateOf?.name ?? dup.duplicateOf?.hotelName ?? dup.duplicateOf?.flightNumber ?? dup.duplicateOf?.pickupLocation }
+            : null,
+        };
+      });
 
     const annotatedTrips = importedTrips.map((trip, tripIndex) => {
       const tripDup = duplicateDetectionService.checkTripDuplicates(trip, existingTrips);
-
-      const annotateItems = (items, checkFn, existingItems) =>
-        (items ?? []).map((item, itemIndex) => {
-          const dup = checkFn(item, existingItems);
-          return {
-            ...item,
-            _importIndex: itemIndex,
-            isDuplicate: dup.isDuplicate,
-            duplicateOf: dup.isDuplicate
-              ? { id: dup.duplicateOf?.id, name: dup.duplicateOf?.name ?? dup.duplicateOf?.hotelName ?? dup.duplicateOf?.flightNumber ?? dup.duplicateOf?.pickupLocation }
-              : null,
-          };
-        });
-
       return {
         ...trip,
         _importIndex: tripIndex,
@@ -344,7 +390,33 @@ exports.importPreview = async (req, res) => {
       };
     });
 
-    return apiResponse.success(res, { trips: annotatedTrips }, 'Preview generated');
+    // Annotate standalone items with duplicate detection
+    const annotatedStandalone = importedStandalone
+      ? {
+          flights: annotateItems(importedStandalone.flights, duplicateDetectionService.checkFlightDuplicates, allExistingFlights),
+          hotels: annotateItems(importedStandalone.hotels, duplicateDetectionService.checkHotelDuplicates, allExistingHotels),
+          transportation: annotateItems(importedStandalone.transportation, duplicateDetectionService.checkTransportationDuplicates, allExistingTransportation),
+          carRentals: annotateItems(importedStandalone.carRentals, duplicateDetectionService.checkCarRentalDuplicates, allExistingCarRentals),
+          events: annotateItems(importedStandalone.events, duplicateDetectionService.checkEventDuplicates, allExistingEvents),
+        }
+      : null;
+
+    // Annotate vouchers with duplicate detection
+    let annotatedVouchers = null;
+    if (Array.isArray(importedVouchers) && importedVouchers.length > 0) {
+      const existingVoucherNumbers = new Set(
+        (await Voucher.findAll({ where: { userId }, attributes: ['voucherNumber'] }))
+          .map((v) => v.voucherNumber)
+      );
+      annotatedVouchers = importedVouchers.map((v, i) => ({
+        ...v,
+        _importIndex: i,
+        isDuplicate: existingVoucherNumbers.has(v.voucherNumber),
+        duplicateOf: existingVoucherNumbers.has(v.voucherNumber) ? { voucherNumber: v.voucherNumber } : null,
+      }));
+    }
+
+    return apiResponse.success(res, { trips: annotatedTrips, standalone: annotatedStandalone, vouchers: annotatedVouchers }, 'Preview generated');
   } catch (error) {
     logger.error('IMPORT_PREVIEW_ERROR', { userId: req.user?.id, error: error.message });
     return apiResponse.internalError(res, 'Error generating import preview', error);
@@ -358,9 +430,9 @@ exports.importPreview = async (req, res) => {
  */
 exports.executeImport = async (req, res) => {
   try {
-    const { Trip, Flight, Hotel, Transportation, CarRental, Event, Companion, Attendee, User } = require('../models');
+    const { Trip, Flight, Hotel, Transportation, CarRental, Event, Companion, Attendee, User, Voucher } = require('../models');
     const userId = req.user.id;
-    const { trips: importTrips, companions: importCompanions } = req.body;
+    const { trips: importTrips, companions: importCompanions, standalone: importStandalone, vouchers: importVouchers } = req.body;
 
     if (!Array.isArray(importTrips)) {
       return apiResponse.badRequest(res, 'Request body must contain a "trips" array');
@@ -391,7 +463,7 @@ exports.executeImport = async (req, res) => {
     const companionService = new CompanionService();
 
     // Helper: find or create a user by email (creates phantom if not found), then add as attendee
-    const importAttendees = async (attendees, itemType, itemId) => {
+    const importAttendees = async (attendees, itemType, itemId, addedBy) => {
       if (!Array.isArray(attendees)) return;
       for (const a of attendees) {
         if (!a.email) continue;
@@ -412,7 +484,7 @@ exports.executeImport = async (req, res) => {
           }
           await Attendee.findOrCreate({
             where: { userId: targetUser.id, itemType, itemId },
-            defaults: { permissionLevel: a.permissionLevel ?? 'view' },
+            defaults: { permissionLevel: a.permissionLevel ?? 'view', addedBy },
           });
         } catch (err) {
           logger.warn('IMPORT_ATTENDEE_SKIP', { email: a.email, itemType, error: err.message });
@@ -470,6 +542,59 @@ exports.executeImport = async (req, res) => {
             await importAttendees(itemAttendees, ITEM_TYPE_ENUM[itemType], newItem.id, userId);
           } catch (err) {
             errors.push({ type: itemType, error: err.message });
+            skipped++;
+          }
+        }
+      }
+    }
+
+    // Import standalone items (no tripId)
+    if (importStandalone && typeof importStandalone === 'object') {
+      for (const [itemType, itemEntries] of Object.entries(importStandalone)) {
+        const model = ITEM_MODELS[itemType];
+        if (!model || !Array.isArray(itemEntries)) continue;
+
+        for (const itemEntry of itemEntries) {
+          const { data: itemData, selected: itemSelected } = itemEntry;
+          if (!itemSelected) { skipped++; continue; }
+
+          try {
+            const {
+              id, _sourceId, userId: _uid, createdBy: _cby,
+              tripId: _tid, createdAt, updatedAt,
+              attendees: itemAttendees, ...cleanItemData
+            } = itemData;
+            const newItem = await model.create({
+              ...cleanItemData,
+              tripId: null,
+              userId,
+              createdBy: userId,
+            });
+            imported++;
+            await importAttendees(itemAttendees, ITEM_TYPE_ENUM[itemType], newItem.id, userId);
+          } catch (err) {
+            errors.push({ type: itemType, error: err.message });
+            skipped++;
+          }
+        }
+      }
+    }
+
+    // Import vouchers — skip on voucherNumber conflict (already exists)
+    if (Array.isArray(importVouchers)) {
+      for (const voucherEntry of importVouchers) {
+        const { data: voucherData, selected: voucherSelected } = voucherEntry;
+        if (!voucherSelected) { skipped++; continue; }
+
+        try {
+          const { _sourceId, createdAt, updatedAt, ...cleanVoucherData } = voucherData;
+          await Voucher.create({ ...cleanVoucherData, userId });
+          imported++;
+        } catch (err) {
+          if (err.name === 'SequelizeUniqueConstraintError') {
+            skipped++;
+          } else {
+            errors.push({ type: 'voucher', voucherNumber: voucherData.voucherNumber, error: err.message });
             skipped++;
           }
         }

@@ -34,6 +34,14 @@
   let importSubmitting = false;
   let importResult = null;     // { imported, skipped, errors }
 
+  $: if (activeSettingsSection !== 'import') {
+    importData = null;
+    importCompanions = [];
+    importSelections = {};
+    importFileError = '';
+    importResult = null;
+  }
+
   $: if (activeSettingsSection === 'profile' && $user) {
     profileForm = { firstName: $user.firstName ?? '', lastName: $user.lastName ?? '', email: $user.email ?? '', phone: $user.phone ?? '' };
     profileSaveError = '';
@@ -76,7 +84,7 @@
       }
 
       importCompanions = Array.isArray(parsed.companions) ? parsed.companions : [];
-      const result = await usersAPI.importPreview({ trips: parsed.trips });
+      const result = await usersAPI.importPreview({ trips: parsed.trips, standalone: parsed.standalone ?? null, vouchers: parsed.vouchers ?? null });
       importData = result;
 
       // Build selection map — duplicates unchecked by default
@@ -95,6 +103,16 @@
           }
         }
       }
+      if (importData.standalone) {
+        for (const [type, items] of Object.entries(importData.standalone)) {
+          for (const item of (items ?? [])) {
+            importSelections[`standalone:${type}:${item._importIndex}`] = !item.isDuplicate;
+          }
+        }
+      }
+      for (const v of (importData.vouchers ?? [])) {
+        importSelections[`voucher:${v._importIndex}`] = !v.isDuplicate;
+      }
     } catch (err) {
       importFileError = err.message || 'Failed to process file.';
     } finally {
@@ -110,6 +128,11 @@
     importResult = null;
 
     // Build the payload
+    const stripAnnotations = (item) => {
+      const { isDuplicate: _id, duplicateOf: _do, _importIndex: _ii, ...data } = item;
+      return data;
+    };
+
     const tripsPayload = importData.trips.map((trip) => {
       const tripKey = `trip:${trip._importIndex}`;
       const { isDuplicate, duplicateOf, _importIndex, flights, hotels, transportation, carRentals, events, ...tripData } = trip;
@@ -117,8 +140,7 @@
       const buildItems = (items, type) =>
         (items ?? []).map((item) => {
           const itemKey = `${type}:${trip._importIndex}:${item._importIndex}`;
-          const { isDuplicate: _id, duplicateOf: _do, _importIndex: _ii, ...data } = item;
-          return { data, selected: !!importSelections[itemKey] };
+          return { data: stripAnnotations(item), selected: !!importSelections[itemKey] };
         });
 
       return {
@@ -134,8 +156,24 @@
       };
     });
 
+    let standalonePayload = null;
+    if (importData.standalone) {
+      standalonePayload = {};
+      for (const [type, items] of Object.entries(importData.standalone)) {
+        standalonePayload[type] = (items ?? []).map((item) => ({
+          data: stripAnnotations(item),
+          selected: !!importSelections[`standalone:${type}:${item._importIndex}`],
+        }));
+      }
+    }
+
+    const vouchersPayload = (importData.vouchers ?? []).map((v) => ({
+      data: stripAnnotations(v),
+      selected: !!importSelections[`voucher:${v._importIndex}`],
+    }));
+
     try {
-      const result = await usersAPI.executeImport(tripsPayload, importCompanions);
+      const result = await usersAPI.executeImport(tripsPayload, importCompanions, standalonePayload, vouchersPayload);
       importResult = result;
       if (result.imported > 0) {
         await loadTripsAndItems();
@@ -151,17 +189,19 @@
 
   $: importSummary = importData ? (() => {
     const trips = importData.trips.length;
-    const items = importData.trips.reduce((n, t) =>
-      n + (t.flights?.length ?? 0) + (t.hotels?.length ?? 0) +
-      (t.transportation?.length ?? 0) + (t.carRentals?.length ?? 0) + (t.events?.length ?? 0), 0);
+    const countItems = (arr) => (arr?.length ?? 0);
+    const countDups = (arr) => (arr?.filter(x => x.isDuplicate).length ?? 0);
+    const itemTypes = ['flights', 'hotels', 'transportation', 'carRentals', 'events'];
+    const tripItems = importData.trips.reduce((n, t) =>
+      n + itemTypes.reduce((m, k) => m + countItems(t[k]), 0), 0);
+    const standaloneItems = importData.standalone
+      ? itemTypes.reduce((n, k) => n + countItems(importData.standalone[k]), 0) : 0;
+    const voucherCount = importData.vouchers?.length ?? 0;
     const dups = importData.trips.reduce((n, t) =>
-      n + (t.isDuplicate ? 1 : 0) +
-      (t.flights?.filter(f => f.isDuplicate).length ?? 0) +
-      (t.hotels?.filter(h => h.isDuplicate).length ?? 0) +
-      (t.transportation?.filter(x => x.isDuplicate).length ?? 0) +
-      (t.carRentals?.filter(x => x.isDuplicate).length ?? 0) +
-      (t.events?.filter(x => x.isDuplicate).length ?? 0), 0);
-    return { trips, items, dups };
+      n + (t.isDuplicate ? 1 : 0) + itemTypes.reduce((m, k) => m + countDups(t[k]), 0), 0)
+      + (importData.standalone ? itemTypes.reduce((n, k) => n + countDups(importData.standalone[k]), 0) : 0)
+      + countDups(importData.vouchers);
+    return { trips, items: tripItems + standaloneItems, vouchers: voucherCount, dups };
   })() : null;
 
   async function handleSaveProfile(e) {
@@ -3657,7 +3697,9 @@
               <div class="import-summary">
                 <p class="import-summary-text">
                   <strong>{importSummary.trips}</strong> trip{importSummary.trips !== 1 ? 's' : ''},
-                  <strong>{importSummary.items}</strong> item{importSummary.items !== 1 ? 's' : ''} found
+                  <strong>{importSummary.items}</strong> item{importSummary.items !== 1 ? 's' : ''}
+                  {#if importSummary.vouchers > 0}, <strong>{importSummary.vouchers}</strong> voucher{importSummary.vouchers !== 1 ? 's' : ''}{/if}
+                  found
                   {#if importSummary.dups > 0}
                     — <span class="import-dup-count">{importSummary.dups} possible duplicate{importSummary.dups !== 1 ? 's' : ''} detected</span>
                   {/if}
@@ -3709,11 +3751,26 @@
             </div>
 
             <div class="import-review-list">
-              {#each importData.trips as trip (trip._importIndex)}
+              {#each [...importData.trips].sort((a, b) => (a.departureDate ?? '').localeCompare(b.departureDate ?? '')) as trip (trip._importIndex)}
                 {@const tripKey = `trip:${trip._importIndex}`}
+                {@const tripItems = [
+                  ...(trip.flights ?? []).map(i => ({ ...i, _itemType: 'flights', _label: 'Flight' })),
+                  ...(trip.hotels ?? []).map(i => ({ ...i, _itemType: 'hotels', _label: 'Hotel' })),
+                  ...(trip.transportation ?? []).map(i => ({ ...i, _itemType: 'transportation', _label: 'Transport' })),
+                  ...(trip.carRentals ?? []).map(i => ({ ...i, _itemType: 'carRentals', _label: 'Car Rental' })),
+                  ...(trip.events ?? []).map(i => ({ ...i, _itemType: 'events', _label: 'Event' })),
+                ].sort((a, b) => {
+                  const da = a.departureDateTime ?? a.checkInDateTime ?? a.startDateTime ?? a.pickupDateTime ?? '';
+                  const db = b.departureDateTime ?? b.checkInDateTime ?? b.startDateTime ?? b.pickupDateTime ?? '';
+                  return da.localeCompare(db);
+                })}
                 <div class="import-trip-block">
                   <label class="import-row import-row--trip">
-                    <input type="checkbox" bind:checked={importSelections[tripKey]} />
+                    <input type="checkbox" checked={importSelections[tripKey]} on:change={(e) => {
+                      const next = { ...importSelections, [tripKey]: e.target.checked };
+                      for (const i of tripItems) next[`${i._itemType}:${trip._importIndex}:${i._importIndex}`] = e.target.checked;
+                      importSelections = next;
+                    }} />
                     <span class="import-row-name">{trip.name || 'Unnamed Trip'}</span>
                     {#if trip.departureDate}
                       <span class="import-row-meta">{trip.departureDate}{trip.returnDate ? ` → ${trip.returnDate}` : ''}</span>
@@ -3726,15 +3783,59 @@
                     {/if}
                   </label>
 
-                  {#each [['flights', 'Flight'], ['hotels', 'Hotel'], ['transportation', 'Transport'], ['carRentals', 'Car Rental'], ['events', 'Event']] as [type, label]}
-                    {#each (trip[type] ?? []) as item (item._importIndex)}
-                      {@const itemKey = `${type}:${trip._importIndex}:${item._importIndex}`}
+                  {#each tripItems as item (item._importIndex + item._itemType)}
+                    {@const itemKey = `${item._itemType}:${trip._importIndex}:${item._importIndex}`}
+                    {@const itemDate = (item.departureDateTime ?? item.checkInDateTime ?? item.startDateTime ?? item.pickupDateTime)?.slice(0, 10)}
+                    <label class="import-row import-row--item">
+                      <input type="checkbox" bind:checked={importSelections[itemKey]} />
+                      <span class="import-row-type-badge">{item._label}</span>
+                      <span class="import-row-name">
+                        {item.flightNumber ?? item.hotelName ?? item.name ?? item.pickupLocation ?? item.method ?? 'Item'}
+                        {#if (item._itemType === 'flights' || item._itemType === 'transportation') && (item.origin || item.destination)}
+                          <span class="import-row-route">{item.origin ?? '?'} → {item.destination ?? '?'}</span>
+                        {/if}
+                      </span>
+                      {#if itemDate}
+                        <span class="import-row-meta">{itemDate}</span>
+                      {/if}
+                      {#if item.isDuplicate}
+                        <span class="import-dup-badge">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="import-dup-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                          Possible duplicate
+                        </span>
+                      {/if}
+                    </label>
+                  {/each}
+                </div>
+              {/each}
+
+              {#if importData.standalone}
+                {@const standaloneTypeMap = [['flights', 'Flight'], ['hotels', 'Hotel'], ['transportation', 'Transport'], ['carRentals', 'Car Rental'], ['events', 'Event']]}
+                {@const allStandaloneItems = standaloneTypeMap.flatMap(([type, label]) =>
+                  (importData.standalone[type] ?? []).map(i => ({ ...i, _itemType: type, _label: label }))
+                ).sort((a, b) => {
+                  const da = a.departureDateTime ?? a.checkInDateTime ?? a.startDateTime ?? a.pickupDateTime ?? '';
+                  const db = b.departureDateTime ?? b.checkInDateTime ?? b.startDateTime ?? b.pickupDateTime ?? '';
+                  return da.localeCompare(db);
+                })}
+                {#if allStandaloneItems.length > 0}
+                  <div class="import-trip-block">
+                    <div class="import-row import-row--section-header">Standalone Items</div>
+                    {#each allStandaloneItems as item (item._importIndex + item._itemType)}
+                      {@const itemKey = `standalone:${item._itemType}:${item._importIndex}`}
+                      {@const itemDate = (item.departureDateTime ?? item.checkInDateTime ?? item.startDateTime ?? item.pickupDateTime)?.slice(0, 10)}
                       <label class="import-row import-row--item">
                         <input type="checkbox" bind:checked={importSelections[itemKey]} />
-                        <span class="import-row-type-badge">{label}</span>
+                        <span class="import-row-type-badge">{item._label}</span>
                         <span class="import-row-name">
                           {item.flightNumber ?? item.hotelName ?? item.name ?? item.pickupLocation ?? item.method ?? 'Item'}
+                          {#if (item._itemType === 'flights' || item._itemType === 'transportation') && (item.origin || item.destination)}
+                            <span class="import-row-route">{item.origin ?? '?'} → {item.destination ?? '?'}</span>
+                          {/if}
                         </span>
+                        {#if itemDate}
+                          <span class="import-row-meta">{itemDate}</span>
+                        {/if}
                         {#if item.isDuplicate}
                           <span class="import-dup-badge">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="import-dup-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -3743,9 +3844,32 @@
                         {/if}
                       </label>
                     {/each}
+                  </div>
+                {/if}
+              {/if}
+
+              {#if importData.vouchers?.length > 0}
+                <div class="import-trip-block">
+                  <div class="import-row import-row--section-header">Vouchers</div>
+                  {#each importData.vouchers as v (v._importIndex)}
+                    {@const vKey = `voucher:${v._importIndex}`}
+                    <label class="import-row import-row--item">
+                      <input type="checkbox" bind:checked={importSelections[vKey]} />
+                      <span class="import-row-type-badge">{v.type}</span>
+                      <span class="import-row-name">{v.issuer} — {v.voucherNumber}</span>
+                      {#if v.expirationDate}
+                        <span class="import-row-meta">{v.expirationDate.slice(0, 10)}</span>
+                      {/if}
+                      {#if v.isDuplicate}
+                        <span class="import-dup-badge">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="import-dup-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                          Possible duplicate
+                        </span>
+                      {/if}
+                    </label>
                   {/each}
                 </div>
-              {/each}
+              {/if}
             </div>
           </PaneColumn>
         {/if}
@@ -4552,7 +4676,7 @@
   .settings-export-description {
     font-size: 0.85rem;
     color: var(--gray-text);
-    margin: 0 0 var(--spacing-xl) 0;
+    margin: 0 0 var(--spacing-sm) 0;
     line-height: 1.5;
   }
 
@@ -4732,6 +4856,26 @@
     font-size: 0.75rem;
     color: var(--gray-text);
     white-space: nowrap;
+  }
+
+  .import-row-route {
+    font-size: 0.75rem;
+    color: var(--gray-text);
+    margin-left: 4px;
+  }
+
+  .import-row--section-header {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gray-text);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    cursor: default;
+  }
+
+  .import-row--section-header:hover {
+    background: none;
   }
 
   .import-row-type-badge {
