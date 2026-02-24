@@ -1,7 +1,11 @@
 <script>
   import { Link, navigate } from 'svelte-routing';
+  import { onMount, onDestroy } from 'svelte';
   import { authAPI } from '../lib/services/api';
   import { user, isAuthenticated } from '../lib/stores/user';
+
+  onMount(() => document.body.classList.add('scrollable'));
+  onDestroy(() => document.body.classList.remove('scrollable'));
 
   let identifier = '';
   let password = '';
@@ -27,12 +31,18 @@
 
 <div class="container">
   <header class="header">
-    <h1>Bluebonnet Travel Planner</h1>
+    <div class="header-content">
+      <Link to="/" class="header-logo-link"><h1>Redbud</h1></Link>
+      <nav class="header-nav">
+        <Link to="/register" class="btn btn-sm btn-primary">Register</Link>
+      </nav>
+    </div>
   </header>
 
   <main class="main-content">
     <div class="auth-card">
-      <h2>Log In</h2>
+      <h2>Welcome back</h2>
+      <p class="auth-subtitle">Log in to your Redbud account</p>
       <form on:submit|preventDefault={handleSubmit}>
         <div class="form-group">
           <label for="identifier">Email or Phone Number</label>
@@ -41,6 +51,7 @@
             id="identifier"
             bind:value={identifier}
             placeholder="you@example.com or +15551234567"
+            autocomplete="username"
             required
             disabled={loading}
           />
@@ -51,6 +62,7 @@
             type="password"
             id="password"
             bind:value={password}
+            autocomplete="current-password"
             required
             disabled={loading}
           />
@@ -65,13 +77,16 @@
       <p class="auth-link">
         Don't have an account? <Link to="/register">Sign up</Link>
       </p>
-      <p class="auth-link">
-        <Link to="/">Back to home</Link>
-      </p>
     </div>
   </main>
 
   <footer class="footer">
-    <p>&copy; 2026 Bluebonnet Travel Planner</p>
+    <p>&copy; 2026 Redbud Travel Planner</p>
   </footer>
 </div>
+
+<style>
+  .header-logo-link {
+    text-decoration: none;
+  }
+</style>

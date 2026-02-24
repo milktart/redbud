@@ -1,8 +1,12 @@
 <script>
   import { Link, navigate } from 'svelte-routing';
+  import { onMount, onDestroy } from 'svelte';
   import { authAPI } from '../lib/services/api';
   import { user, isAuthenticated } from '../lib/stores/user';
   import PhoneInput from '../lib/components/PhoneInput.svelte';
+
+  onMount(() => document.body.classList.add('scrollable'));
+  onDestroy(() => document.body.classList.remove('scrollable'));
 
   let firstName = '';
   let lastInitial = '';
@@ -39,12 +43,18 @@
 
 <div class="container">
   <header class="header">
-    <h1>Bluebonnet Travel Planner</h1>
+    <div class="header-content">
+      <Link to="/" class="header-logo-link"><h1>Redbud</h1></Link>
+      <nav class="header-nav">
+        <Link to="/login" class="btn btn-sm btn-outline">Log In</Link>
+      </nav>
+    </div>
   </header>
 
   <main class="main-content">
     <div class="auth-card">
-      <h2>Sign Up</h2>
+      <h2>Create your account</h2>
+      <p class="auth-subtitle">Start planning your travels with Redbud</p>
       <form on:submit|preventDefault={handleSubmit}>
         <div class="form-group">
           <label for="firstName">First Name</label>
@@ -52,6 +62,7 @@
             type="text"
             id="firstName"
             bind:value={firstName}
+            autocomplete="given-name"
             required
             disabled={loading}
           />
@@ -62,6 +73,7 @@
             type="text"
             id="lastInitial"
             bind:value={lastInitial}
+            autocomplete="family-name"
             required
             maxlength="1"
             disabled={loading}
@@ -90,6 +102,7 @@
               id="email"
               bind:value={email}
               placeholder="you@example.com"
+              autocomplete="email"
               required
               disabled={loading}
             />
@@ -108,6 +121,7 @@
             type="password"
             id="password"
             bind:value={password}
+            autocomplete="new-password"
             required
             disabled={loading}
           />
@@ -116,24 +130,25 @@
           <div class="error-message">{error}</div>
         {/if}
         <button type="submit" class="btn btn-primary btn-block" disabled={loading}>
-          {loading ? 'Signing up...' : 'Sign Up'}
+          {loading ? 'Creating account...' : 'Create Account'}
         </button>
       </form>
       <p class="auth-link">
         Already have an account? <Link to="/login">Log in</Link>
       </p>
-      <p class="auth-link">
-        <Link to="/">Back to home</Link>
-      </p>
     </div>
   </main>
 
   <footer class="footer">
-    <p>&copy; 2026 Bluebonnet Travel Planner</p>
+    <p>&copy; 2026 Redbud Travel Planner</p>
   </footer>
 </div>
 
 <style>
+  .header-logo-link {
+    text-decoration: none;
+  }
+
   .identifier-toggle {
     display: flex;
     gap: 0;

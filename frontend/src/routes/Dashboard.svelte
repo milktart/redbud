@@ -19,6 +19,7 @@
   let standaloneItems = [];
   let attendeeStandaloneItems = [];   // standalone items I was added to as attendee
   let companionStandaloneItems = [];  // standalone items from companion-shared library
+  let isMobileView = typeof window !== 'undefined' && window.innerWidth <= 640;
   let activePane = 'timeline'; // 'timeline' | 'history' | 'shared' | 'calendar' | 'settings' | 'addNew' | null
   let activeSettingsSection = null; // 'profile' | 'security' | 'appearance' | 'notifications' | 'export' | 'import'
   let profileForm = { firstName: '', lastName: '', email: '', phone: '' };
@@ -525,6 +526,9 @@
     event: true
   };
 
+  let showCalendarFilters = window.innerWidth > 640;
+  let showMobileFilterSheet = false;
+
   // Reactive statement to update map markers when items or timeline tab changes
   $: if (map && L && (items || activeTimelineTab || activePane || trips || friendsTrips || attendeeStandaloneItems || companionStandaloneItems)) {
     updateMapMarkersFiltered();
@@ -543,7 +547,11 @@
 
     if (map && L && (activePane !== null || selectedItem !== null)) {
       setTimeout(() => {
-        map.invalidateSize();
+        const isMobile = window.innerWidth <= 640;
+
+        // { pan: false } stops invalidateSize from re-centering the map after
+        // a container resize, so our subsequent fitBounds/panBy is not undone.
+        map.invalidateSize({ pan: false });
 
         // Only re-fit bounds when pane is opening for the first time (from null).
         // All column-count changes (1→2, 1→4, etc.) preserve the current view.
@@ -551,13 +559,17 @@
           const group = L.featureGroup(markers);
           if (group.getBounds().isValid()) {
             const bounds = group.getBounds();
-            const viewportWidth = window.innerWidth;
-            const colUnit = (viewportWidth - 2.5 / 100 * window.innerHeight - 50 - 2.5 / 100 * window.innerHeight - 2.5 / 100 * window.innerHeight) / 4;
-            const leftOccupiedWidth = 50 + colUnit + 2.5 / 100 * window.innerHeight * 3;
-            map.fitBounds(bounds, {
-              paddingTopLeft: [leftOccupiedWidth, 20],
-              paddingBottomRight: [20, 20]
-            });
+            if (isMobile) {
+              map.fitBounds(bounds, { padding: [8, 8] });
+            } else {
+              const viewportWidth = window.innerWidth;
+              const colUnit = (viewportWidth - 2.5 / 100 * window.innerHeight - 50 - 2.5 / 100 * window.innerHeight - 2.5 / 100 * window.innerHeight) / 4;
+              const leftOccupiedWidth = 50 + colUnit + 2.5 / 100 * window.innerHeight * 3;
+              map.fitBounds(bounds, {
+                paddingTopLeft: [leftOccupiedWidth, 20],
+                paddingBottomRight: [20, 20]
+              });
+            }
           }
         }
       }, 350);
@@ -1242,21 +1254,22 @@
       const group = L.featureGroup(markers);
       const bounds = group.getBounds();
 
-      // Calculate the padding needed to center the map in the visible area (right of content pane)
-      // Content pane width is approximately 25vw (min 300px, max 400px) + side nav (50px) + gaps (2.5vh * 3)
-      const viewportWidth = window.innerWidth;
-      const contentPaneWidth = Math.min(Math.max(viewportWidth * 0.25, 300), 400);
-      const sideNavWidth = 50;
-      const gaps = 2.5 * 3; // vh units, approximate as pixels for calculation
-      const leftOccupiedWidth = sideNavWidth + contentPaneWidth + gaps;
+      if (window.innerWidth <= 640) {
+        map.fitBounds(bounds, { padding: [8, 8] });
+      } else {
+        // Calculate the padding needed to center the map in the visible area (right of content pane)
+        // Content pane width is approximately 25vw (min 300px, max 400px) + side nav (50px) + gaps (2.5vh * 3)
+        const viewportWidth = window.innerWidth;
+        const contentPaneWidth = Math.min(Math.max(viewportWidth * 0.25, 300), 400);
+        const sideNavWidth = 50;
+        const gaps = 2.5 * 3;
+        const leftOccupiedWidth = sideNavWidth + contentPaneWidth + gaps;
 
-      // Fit bounds with padding on the left to account for the content pane
-      const leftPaddingRatio = leftOccupiedWidth / viewportWidth;
-
-      map.fitBounds(bounds, {
-        paddingTopLeft: [leftOccupiedWidth, 20],
-        paddingBottomRight: [20, 20]
-      });
+        map.fitBounds(bounds, {
+          paddingTopLeft: [leftOccupiedWidth, 20],
+          paddingBottomRight: [20, 20]
+        });
+      }
     }
   }
 
@@ -1275,19 +1288,16 @@
 
     map = L.map(mapContainer, {
       zoomControl: false,
-      attributionControl: true,
+      attributionControl: false,
       worldCopyJump: true,
       maxBounds: [[-90, -Infinity], [90, Infinity]],
       maxBoundsViscosity: 0.0
     }).setView([20, 0], 2);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
       noWrap: false
     }).addTo(map);
-
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     // Initial map markers update
     updateMapMarkersFiltered();
@@ -2017,7 +2027,7 @@
 
   <!-- Independent content pane -->
   {#if activePane === 'timeline'}
-    <ContentPane columns={(selectedItem || selectedTrip) ? 2 : 1}>
+    <ContentPane columns={(selectedItem || selectedTrip) && !isMobileView ? 2 : 1} mobileTop="30vh">
       <PaneColumn span={1}>
 
         <h3 class="pane-title">Timeline</h3>
@@ -2160,8 +2170,8 @@
       {/key}
       </PaneColumn>
 
-      <!-- Edit Form Column -->
-      {#if selectedItem}
+      <!-- Edit Form Column (desktop only) -->
+      {#if selectedItem && !isMobileView}
         <PaneColumn span={1} divider={true}>
           <div class="edit-header">
             <h3 class="pane-title">Edit {selectedItem.itemType.replace('_', ' ')}</h3>
@@ -2530,7 +2540,8 @@
             {/if}
           </form>
         </PaneColumn>
-      {:else if selectedTrip}
+      {/if}
+      {#if selectedTrip && !isMobileView}
         <PaneColumn span={1} divider={true}>
           <div class="edit-header">
             <h3 class="pane-title">Edit Trip</h3>
@@ -2643,10 +2654,413 @@
         </PaneColumn>
       {/if}
     </ContentPane>
+
+    <!-- Mobile edit bottom sheet -->
+    {#if isMobileView && (selectedItem || selectedTrip)}
+      <div class="edit-sheet-backdrop" on:click={() => { closeEditForm(); closeTripEditForm(); }}></div>
+      <div class="edit-sheet edit-sheet-open">
+        <div class="filter-sheet-handle"></div>
+        <div class="edit-sheet-scroll">
+          {#if selectedItem}
+            <div class="filter-sheet-header">
+              <h3 class="pane-title" style="margin:0">Edit {selectedItem.itemType.replace('_', ' ')}</h3>
+              <button class="close-btn" on:click={closeEditForm}>✕</button>
+            </div>
+            <form class="edit-form" on:submit={handleUpdateItem}>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="m-edit-item-trip">Trip (Optional)</label>
+                  <select id="m-edit-item-trip" bind:value={editForm.tripId}>
+                    <option value="">None (standalone item)</option>
+                    {#each trips as trip}
+                      <option value={trip.id}>{trip.name}</option>
+                    {/each}
+                  </select>
+                </div>
+                <div class="form-group form-group--toggle">
+                  <label>Status</label>
+                  <label class="toggle-switch" title={editForm.status === 'confirmed' ? 'Confirmed' : 'Tentative'}>
+                    <input type="checkbox" checked={editForm.status === 'confirmed'} on:change={(e) => { editForm.status = e.target.checked ? 'confirmed' : 'tentative'; }} />
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+              {#if editForm.itemType === 'flight'}
+                <div class="form-row">
+                  <div class="form-group form-group--30">
+                    <label for="m-edit-flight-number">Flight *</label>
+                    <input type="text" id="m-edit-flight-number" value={editForm.flightNumber} on:input={onEditFlightNumberInput} placeholder="e.g., AA100" required />
+                  </div>
+                  <div class="form-group form-group--70">
+                    <label for="m-edit-airline">Airline</label>
+                    <input type="text" id="m-edit-airline" value={editForm.airline} placeholder="Auto-populated" disabled />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="m-edit-origin">Origin *</label>
+                    <input type="text" id="m-edit-origin" bind:value={editForm.origin} placeholder="e.g., JFK" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="m-edit-destination">Destination *</label>
+                    <input type="text" id="m-edit-destination" bind:value={editForm.destination} placeholder="e.g., LAX" required />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-departure-date">Departure Date *</label>
+                    <input type="date" id="m-edit-departure-date" bind:value={editForm.departureDate} on:change={() => onEditStartDateChange('departureDate', 'arrivalDate')} required />
+                  </div>
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-arrival-date">Arrival Date *</label>
+                    <input type="date" id="m-edit-arrival-date" bind:value={editForm.arrivalDate} on:change={() => onEditEndDateChange('departureDate', 'arrivalDate')} required />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-departure-time">Departure Time *</label>
+                    <input type="text" inputmode="numeric" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM" use:timeInput id="m-edit-departure-time" bind:value={editForm.departureTime} required />
+                  </div>
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-arrival-time">Arrival Time *</label>
+                    <input type="text" inputmode="numeric" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM" use:timeInput id="m-edit-arrival-time" bind:value={editForm.arrivalTime} required />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="m-edit-pnr">PNR / Confirmation</label>
+                    <input type="text" id="m-edit-pnr" bind:value={editForm.pnr} placeholder="Booking reference" />
+                  </div>
+                  <div class="form-group">
+                    <label for="m-edit-seat">Seat</label>
+                    <input type="text" id="m-edit-seat" bind:value={editForm.seat} placeholder="e.g., 12A" />
+                  </div>
+                </div>
+              {/if}
+              {#if editForm.itemType === 'hotel'}
+                <div class="form-group">
+                  <label for="m-edit-hotel-name">Hotel Name *</label>
+                  <input type="text" id="m-edit-hotel-name" bind:value={editForm.hotelName} placeholder="e.g., Hilton Garden Inn" required />
+                </div>
+                <div class="form-group">
+                  <label for="m-edit-address">Address *</label>
+                  <textarea id="m-edit-address" bind:value={editForm.address} placeholder="Full hotel address" rows="2" required></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="m-edit-hotel-phone">Phone</label>
+                  <PhoneInput id="m-edit-hotel-phone" value={editForm.phone} onChangeNumber={(num) => { editForm.phone = num; }} />
+                </div>
+                <div class="form-row">
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-check-in-date">Check-in Date *</label>
+                    <input type="date" id="m-edit-check-in-date" bind:value={editForm.checkInDate} on:change={() => onEditStartDateChange('checkInDate', 'checkOutDate')} required />
+                  </div>
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-check-out-date">Check-out Date *</label>
+                    <input type="date" id="m-edit-check-out-date" bind:value={editForm.checkOutDate} on:change={() => onEditEndDateChange('checkInDate', 'checkOutDate')} required />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-check-in-time">Check-in Time *</label>
+                    <input type="text" inputmode="numeric" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM" use:timeInput id="m-edit-check-in-time" bind:value={editForm.checkInTime} required />
+                  </div>
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-check-out-time">Check-out Time *</label>
+                    <input type="text" inputmode="numeric" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM" use:timeInput id="m-edit-check-out-time" bind:value={editForm.checkOutTime} required />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="m-edit-confirmation-number">Confirmation #</label>
+                    <input type="text" id="m-edit-confirmation-number" bind:value={editForm.confirmationNumber} placeholder="Booking number" />
+                  </div>
+                  <div class="form-group">
+                    <label for="m-edit-room-number">Room Number</label>
+                    <input type="text" id="m-edit-room-number" bind:value={editForm.roomNumber} placeholder="e.g., 205" />
+                  </div>
+                </div>
+              {/if}
+              {#if editForm.itemType === 'transportation'}
+                <div class="form-group">
+                  <label for="m-edit-method">Method *</label>
+                  <input type="text" id="m-edit-method" bind:value={editForm.method} placeholder="e.g., Train, Bus, Ferry" required />
+                </div>
+                <div class="form-group">
+                  <label for="m-edit-journey-number">Journey/Route Number</label>
+                  <input type="text" id="m-edit-journey-number" bind:value={editForm.journeyNumber} placeholder="e.g., Route 405" />
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="m-edit-trans-origin">Origin *</label>
+                    <input type="text" id="m-edit-trans-origin" bind:value={editForm.origin} placeholder="Departure location" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="m-edit-trans-destination">Destination *</label>
+                    <input type="text" id="m-edit-trans-destination" bind:value={editForm.destination} placeholder="Arrival location" required />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-trans-departure-date">Departure Date *</label>
+                    <input type="date" id="m-edit-trans-departure-date" bind:value={editForm.departureDate} on:change={() => onEditStartDateChange('departureDate', 'arrivalDate')} required />
+                  </div>
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-trans-arrival-date">Arrival Date *</label>
+                    <input type="date" id="m-edit-trans-arrival-date" bind:value={editForm.arrivalDate} on:change={() => onEditEndDateChange('departureDate', 'arrivalDate')} required />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-trans-departure-time">Departure Time *</label>
+                    <input type="text" inputmode="numeric" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM" use:timeInput id="m-edit-trans-departure-time" bind:value={editForm.departureTime} required />
+                  </div>
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-trans-arrival-time">Arrival Time *</label>
+                    <input type="text" inputmode="numeric" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM" use:timeInput id="m-edit-trans-arrival-time" bind:value={editForm.arrivalTime} required />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="m-edit-trans-confirmation">Confirmation #</label>
+                    <input type="text" id="m-edit-trans-confirmation" bind:value={editForm.confirmationNumber} placeholder="Booking reference" />
+                  </div>
+                  <div class="form-group">
+                    <label for="m-edit-trans-seat">Seat</label>
+                    <input type="text" id="m-edit-trans-seat" bind:value={editForm.seat} placeholder="e.g., Coach 3, Seat 12" />
+                  </div>
+                </div>
+              {/if}
+              {#if editForm.itemType === 'event'}
+                <div class="form-group">
+                  <label for="m-edit-event-name">Event Name *</label>
+                  <input type="text" id="m-edit-event-name" bind:value={editForm.name} placeholder="e.g., Concert, Conference" required />
+                </div>
+                <div class="form-group">
+                  <label for="m-edit-event-location">Location *</label>
+                  <textarea id="m-edit-event-location" bind:value={editForm.location} placeholder="Full address or venue name" rows="2" required></textarea>
+                </div>
+                <div class="form-row">
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-start-date">Start Date *</label>
+                    <input type="date" id="m-edit-start-date" bind:value={editForm.startDate} on:change={() => onEditStartDateChange('startDate', 'endDate')} required />
+                  </div>
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-end-date">End Date</label>
+                    <input type="date" id="m-edit-end-date" bind:value={editForm.endDate} on:change={() => onEditEndDateChange('startDate', 'endDate')} />
+                  </div>
+                </div>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.9rem; font-weight:500;">
+                  <input type="checkbox" bind:checked={editForm.allDay} on:change={() => { if (editForm.allDay) { editForm.startTime = '00:00'; editForm.endTime = '24:00'; } }} />
+                  All day event
+                </label>
+                {#if !editForm.allDay}
+                <div class="form-row">
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-start-time">Start Time *</label>
+                    <input type="text" inputmode="numeric" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM" use:timeInput id="m-edit-start-time" bind:value={editForm.startTime} required />
+                  </div>
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-end-time">End Time</label>
+                    <input type="text" inputmode="numeric" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM" use:timeInput id="m-edit-end-time" bind:value={editForm.endTime} />
+                  </div>
+                </div>
+                {/if}
+                <div class="form-group">
+                  <label for="m-edit-description">Description</label>
+                  <textarea id="m-edit-description" bind:value={editForm.description} placeholder="Event details" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="m-edit-contact-phone">Contact Phone</label>
+                    <PhoneInput id="m-edit-contact-phone" value={editForm.contactPhone} onChangeNumber={(num) => { editForm.contactPhone = num; }} />
+                  </div>
+                  <div class="form-group">
+                    <label for="m-edit-contact-email">Contact Email</label>
+                    <input type="email" id="m-edit-contact-email" bind:value={editForm.contactEmail} placeholder="info@event.com" />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="m-edit-event-url">Event URL</label>
+                  <input type="url" id="m-edit-event-url" bind:value={editForm.eventUrl} placeholder="https://..." />
+                </div>
+              {/if}
+              {#if editForm.itemType === 'car_rental'}
+                <div class="form-group">
+                  <label for="m-edit-company">Rental Company *</label>
+                  <input type="text" id="m-edit-company" bind:value={editForm.company} placeholder="e.g., Hertz, Enterprise" required />
+                </div>
+                <div class="form-group">
+                  <label for="m-edit-pickup-location">Pickup Location *</label>
+                  <input type="text" id="m-edit-pickup-location" bind:value={editForm.pickupLocation} placeholder="Full address" required />
+                </div>
+                <div class="form-row">
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-pickup-date">Pickup Date *</label>
+                    <input type="date" id="m-edit-pickup-date" bind:value={editForm.pickupDate} on:change={() => onEditStartDateChange('pickupDate', 'dropoffDate')} required />
+                  </div>
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-pickup-time">Pickup Time *</label>
+                    <input type="text" inputmode="numeric" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM" use:timeInput id="m-edit-pickup-time" bind:value={editForm.pickupTime} required />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="m-edit-dropoff-location">Dropoff Location *</label>
+                  <input type="text" id="m-edit-dropoff-location" bind:value={editForm.dropoffLocation} placeholder="Full address" required />
+                </div>
+                <div class="form-row">
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-dropoff-date">Dropoff Date *</label>
+                    <input type="date" id="m-edit-dropoff-date" bind:value={editForm.dropoffDate} on:change={() => onEditEndDateChange('pickupDate', 'dropoffDate')} required />
+                  </div>
+                  <div class="form-group form-group--half">
+                    <label for="m-edit-dropoff-time">Dropoff Time *</label>
+                    <input type="text" inputmode="numeric" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM" use:timeInput id="m-edit-dropoff-time" bind:value={editForm.dropoffTime} required />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="m-edit-car-confirmation">Confirmation Number</label>
+                  <input type="text" id="m-edit-car-confirmation" bind:value={editForm.confirmationNumber} placeholder="Reservation number" />
+                </div>
+              {/if}
+              <!-- Attendees -->
+              <div class="attendee-section">
+                <h4 class="attendee-section-title">Travelers</h4>
+                {#if formAttendeesLoading}
+                  <p class="attendee-empty">Loading…</p>
+                {:else if formAttendees.length > 0}
+                  <div class="attendee-chips">
+                    {#each formAttendees as att (att.id)}
+                      <span class="attendee-chip">
+                        <span class="attendee-chip-name">{att.user?.firstName || att.user?.email || 'Unknown'}</span>
+                        {#if formAttendees.length > 1 && (selectedItem.tripId || att.user?.id !== selectedItem.createdBy)}
+                          <button type="button" class="attendee-chip-remove" aria-label="Remove {att.user?.firstName || att.user?.email}" on:click={() => handleRemoveAttendee(att.id, selectedItem.itemType, selectedItem.id)}>×</button>
+                        {/if}
+                      </span>
+                    {/each}
+                  </div>
+                {:else}
+                  <p class="attendee-empty">No travelers added yet.</p>
+                {/if}
+                <div class="attendee-add-row">
+                  <div class="attendee-input-wrap">
+                    <input type="text" class="attendee-email-input" placeholder="Search by name or email" bind:value={attendeeEmailInput} on:input={onAttendeeInput} on:blur={dismissAttendeeSuggestions} on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddAttendee(selectedItem.itemType, selectedItem.id); } else if (e.key === 'Escape') { attendeeSuggestions = []; } }} autocomplete="off" />
+                    {#if attendeeSuggestions.length > 0}
+                      <ul class="attendee-suggestions">
+                        {#each attendeeSuggestions as u (u.id)}
+                          <li><button type="button" class="attendee-suggestion-item" on:mousedown={() => selectAttendeeSuggestion(u, selectedItem.itemType, selectedItem.id, false)}><span class="suggestion-name">{u.firstName || ''} {u.lastName || ''}</span><span class="suggestion-email">{u.email}</span></button></li>
+                        {/each}
+                      </ul>
+                    {:else if attendeeSuggestionsLoading}
+                      <ul class="attendee-suggestions"><li class="suggestion-loading">Searching…</li></ul>
+                    {/if}
+                  </div>
+                  <button type="button" class="btn-attendee-add" disabled={attendeeAddLoading || !attendeeEmailInput.trim()} on:click={() => handleAddAttendee(selectedItem.itemType, selectedItem.id)}>{attendeeAddLoading ? '…' : 'Add'}</button>
+                </div>
+                {#if attendeeAddError}<p class="attendee-error">{attendeeAddError}</p>{/if}
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn-secondary" on:click={closeEditForm}>Cancel</button>
+                <button type="submit" class="btn-primary">Update</button>
+              </div>
+              {#if selectedItem?.canDelete}
+                <div class="form-actions-remove">
+                  <button type="button" class="btn-danger-outline" on:click={() => handleDeleteItem(selectedItem.id, selectedItem.itemType)}>Remove</button>
+                </div>
+              {/if}
+            </form>
+          {:else if selectedTrip}
+            <div class="filter-sheet-header">
+              <h3 class="pane-title" style="margin:0">Edit Trip</h3>
+              <button class="close-btn" on:click={closeTripEditForm}>✕</button>
+            </div>
+            <form class="edit-form" on:submit={handleUpdateTrip}>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="m-edit-trip-name">Trip Name</label>
+                  <input type="text" id="m-edit-trip-name" bind:value={editTripForm.name} placeholder="e.g., Summer Vacation" required />
+                </div>
+                <div class="form-group form-group--toggle">
+                  <label>Status</label>
+                  <label class="toggle-switch" title={editTripForm.status === 'confirmed' ? 'Confirmed' : 'Tentative'}>
+                    <input type="checkbox" checked={editTripForm.status === 'confirmed'} on:change={(e) => { editTripForm.status = e.target.checked ? 'confirmed' : 'tentative'; }} />
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group form-group--half">
+                  <label for="m-edit-trip-departure">Departure Date</label>
+                  <input type="date" id="m-edit-trip-departure" bind:value={editTripForm.departureDate} required />
+                </div>
+                <div class="form-group form-group--half">
+                  <label for="m-edit-trip-return">Return Date</label>
+                  <input type="date" id="m-edit-trip-return" bind:value={editTripForm.returnDate} />
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="m-edit-trip-purpose">Purpose</label>
+                <select id="m-edit-trip-purpose" bind:value={editTripForm.purpose}>
+                  <option value="business">Business</option>
+                  <option value="leisure">Leisure</option>
+                  <option value="family">Family</option>
+                  <option value="romantic">Romantic</option>
+                  <option value="adventure">Adventure</option>
+                  <option value="pleasure">Pleasure</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="attendee-section">
+                <h4 class="attendee-section-title">Travelers</h4>
+                {#if formAttendeesLoading}
+                  <p class="attendee-empty">Loading…</p>
+                {:else if formAttendees.length > 0}
+                  <div class="attendee-chips">
+                    {#each formAttendees as att (att.id)}
+                      <span class="attendee-chip">
+                        <span class="attendee-chip-name">{att.user?.firstName || att.user?.email || 'Unknown'}</span>
+                        {#if formAttendees.length > 1 && att.user?.id !== selectedTrip.createdBy}
+                          <button type="button" class="attendee-chip-remove" aria-label="Remove {att.user?.firstName || att.user?.email}" on:click={() => handleRemoveAttendee(att.id, 'trip', selectedTrip.id)}>×</button>
+                        {/if}
+                      </span>
+                    {/each}
+                  </div>
+                {:else}
+                  <p class="attendee-empty">No travelers added yet.</p>
+                {/if}
+                <div class="attendee-add-row">
+                  <div class="attendee-input-wrap">
+                    <input type="text" class="attendee-email-input" placeholder="Search by name or email" bind:value={attendeeEmailInput} on:input={onAttendeeInput} on:blur={dismissAttendeeSuggestions} on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddAttendee('trip', selectedTrip.id); } else if (e.key === 'Escape') { attendeeSuggestions = []; } }} autocomplete="off" />
+                    {#if attendeeSuggestions.length > 0}
+                      <ul class="attendee-suggestions">
+                        {#each attendeeSuggestions as u (u.id)}
+                          <li><button type="button" class="attendee-suggestion-item" on:mousedown={() => selectAttendeeSuggestion(u, 'trip', selectedTrip.id, false)}><span class="suggestion-name">{u.firstName || ''} {u.lastName || ''}</span><span class="suggestion-email">{u.email}</span></button></li>
+                        {/each}
+                      </ul>
+                    {:else if attendeeSuggestionsLoading}
+                      <ul class="attendee-suggestions"><li class="suggestion-loading">Searching…</li></ul>
+                    {/if}
+                  </div>
+                  <button type="button" class="btn-attendee-add" disabled={attendeeAddLoading || !attendeeEmailInput.trim()} on:click={() => handleAddAttendee('trip', selectedTrip.id)}>{attendeeAddLoading ? '…' : 'Add'}</button>
+                </div>
+                {#if attendeeAddError}<p class="attendee-error">{attendeeAddError}</p>{/if}
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn-secondary" on:click={closeTripEditForm}>Cancel</button>
+                <button type="submit" class="btn-primary">Update</button>
+              </div>
+              <div class="form-actions-remove">
+                <button type="button" class="btn-danger-outline" on:click={() => handleDeleteTrip(selectedTrip.id)}>Remove</button>
+              </div>
+            </form>
+          {/if}
+        </div>
+      </div>
+    {/if}
   {/if}
 
   {#if activePane === 'shared'}
-    <ContentPane columns={1}>
+    <ContentPane columns={1} mobileTop="30vh">
       <PaneColumn span={1}>
         <h3 class="pane-title">Friends' Trips</h3>
 
@@ -3283,8 +3697,9 @@
   {/if}
 
   {#if activePane === 'calendar'}
-    <ContentPane columns={4}>
-      <!-- Filter column -->
+    <ContentPane columns={showCalendarFilters ? 4 : 3}>
+      <!-- Filter column — desktop only -->
+      {#if showCalendarFilters}
       <PaneColumn span={1}>
         <h3 class="pane-title">Filters</h3>
 
@@ -3336,9 +3751,19 @@
           </div>
         </div>
       </PaneColumn>
+      {/if}
 
       <!-- Calendar column -->
-      <PaneColumn span={3} divider={true}>
+      <PaneColumn span={3} divider={showCalendarFilters}>
+        <div class="calendar-toolbar">
+          <button class="nav-square calendar-filter-toggle" on:click={() => showMobileFilterSheet = !showMobileFilterSheet} title="Toggle filters">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="6" x2="20" y2="6"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+              <line x1="11" y1="18" x2="13" y2="18"/>
+            </svg>
+          </button>
+        </div>
         <CalendarView
           {trips}
           standaloneItems={[...standaloneItems, ...attendeeStandaloneItems]}
@@ -3346,6 +3771,47 @@
         />
       </PaneColumn>
     </ContentPane>
+
+    <!-- Mobile filter bottom sheet -->
+    {#if showMobileFilterSheet}
+      <div class="filter-sheet-backdrop" on:click={() => showMobileFilterSheet = false}></div>
+    {/if}
+    <div class="filter-sheet" class:filter-sheet-open={showMobileFilterSheet}>
+      <div class="filter-sheet-handle"></div>
+      <div class="filter-sheet-header">
+        <h3 class="pane-title" style="margin:0">Filters</h3>
+        <button class="close-btn" on:click={() => showMobileFilterSheet = false}>✕</button>
+      </div>
+      <div class="filter-section">
+        <h4 class="filter-section-title">Show on Calendar</h4>
+        <div class="filter-checkboxes">
+          <label class="filter-checkbox">
+            <input type="checkbox" checked={visibleItemTypes.trip} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, trip: e.target.checked }; }} />
+            <span class="checkbox-label"><span class="checkbox-color" style="background: #3b82f6;"></span>Trip</span>
+          </label>
+          <label class="filter-checkbox">
+            <input type="checkbox" checked={visibleItemTypes.flight} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, flight: e.target.checked }; }} />
+            <span class="checkbox-label"><span class="checkbox-color" style="background: #10b981;"></span>Flight</span>
+          </label>
+          <label class="filter-checkbox">
+            <input type="checkbox" checked={visibleItemTypes.hotel} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, hotel: e.target.checked }; }} />
+            <span class="checkbox-label"><span class="checkbox-color" style="background: #f59e0b;"></span>Hotel</span>
+          </label>
+          <label class="filter-checkbox">
+            <input type="checkbox" checked={visibleItemTypes.transportation} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, transportation: e.target.checked }; }} />
+            <span class="checkbox-label"><span class="checkbox-color" style="background: #8b5cf6;"></span>Transportation</span>
+          </label>
+          <label class="filter-checkbox">
+            <input type="checkbox" checked={visibleItemTypes.car_rental} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, car_rental: e.target.checked }; }} />
+            <span class="checkbox-label"><span class="checkbox-color" style="background: #ec4899;"></span>Car Rental</span>
+          </label>
+          <label class="filter-checkbox">
+            <input type="checkbox" checked={visibleItemTypes.event} on:change={(e) => { visibleItemTypes = { ...visibleItemTypes, event: e.target.checked }; }} />
+            <span class="checkbox-label"><span class="checkbox-color" style="background: #06b6d4;"></span>Event</span>
+          </label>
+        </div>
+      </div>
+    </div>
   {/if}
 
   {#if activePane === 'settings'}
@@ -3997,6 +4463,14 @@
     z-index: 0;
   }
 
+  @media (max-width: 640px) {
+    .map-container {
+      height: 30vh;
+      bottom: auto;
+    }
+  }
+
+
   .side-nav {
     position: absolute;
     top: 2.5vh;
@@ -4049,6 +4523,144 @@
 
   .filter-section {
     margin-top: var(--spacing-lg);
+  }
+
+  .calendar-toolbar {
+    display: none;
+    margin-bottom: var(--spacing-md);
+  }
+
+  @media (max-width: 640px) {
+    .calendar-toolbar {
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  .calendar-filter-toggle {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+  }
+
+  .calendar-filter-toggle svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Filter bottom sheet — mobile only */
+  .filter-sheet,
+  .edit-sheet {
+    display: none;
+  }
+
+  @media (max-width: 640px) {
+    .edit-sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      z-index: calc(var(--z-modal) - 1);
+    }
+
+    .edit-sheet {
+      display: block;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: var(--z-modal);
+      background: var(--white);
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      padding: var(--spacing-lg) var(--spacing-2xl) 0;
+      box-shadow: var(--shadow-top);
+      max-height: 80vh;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+      /* Prevent horizontal overflow */
+      width: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .edit-sheet.edit-sheet-open {
+      transform: translateY(0);
+    }
+
+    .edit-sheet-scroll {
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      max-height: calc(80vh - 60px);
+      padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+      width: 100%;
+      box-sizing: border-box;
+      scrollbar-width: none;
+    }
+
+    .edit-sheet-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Normalize date inputs to match text inputs on iOS */
+    input[type="date"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      min-height: 44px;
+      height: 44px;
+      padding: var(--spacing-sm) var(--spacing-md);
+      font-size: 16px;
+      line-height: 1.6;
+      border: 1px solid var(--glass-border-dark);
+      border-radius: var(--radius-md);
+      background: var(--glass-bg-medium);
+      color: var(--dark-text);
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .filter-sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      z-index: calc(var(--z-modal) - 1);
+    }
+
+    .filter-sheet {
+      display: block;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: var(--z-modal);
+      background: var(--white);
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      padding: var(--spacing-lg) var(--spacing-2xl) var(--spacing-4xl);
+      box-shadow: var(--shadow-top);
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    .filter-sheet.filter-sheet-open {
+      transform: translateY(0);
+    }
+
+    .filter-sheet-handle {
+      width: 36px;
+      height: 4px;
+      background: var(--grey-300);
+      border-radius: 2px;
+      margin: 0 auto var(--spacing-lg);
+    }
+
+    .filter-sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--spacing-lg);
+    }
   }
 
   .filter-section-title {

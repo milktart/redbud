@@ -36,10 +36,25 @@
   .pane-column {
     flex: 0 0 auto;
     min-width: 0;
+    height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
     padding: var(--spacing-2xl);
     box-sizing: border-box;
+  }
+
+  @media (max-width: 640px) {
+    .pane-column {
+      flex: 1 1 auto;
+      width: 100% !important;
+      padding-bottom: calc(var(--spacing-2xl) + 90px + env(safe-area-inset-bottom, 0px));
+      scrollbar-width: none;
+    }
+
+    .pane-column::-webkit-scrollbar {
+      display: none;
+    }
   }
   .pane-column.divider {
     border-left: 1px solid var(--grey-200);

@@ -1,10 +1,11 @@
 <script>
   export let columns = 1; // 1 | 2 | 3 | 4
+  export let mobileTop = '2.5vh';
 </script>
 
 <div
   class="content-pane"
-  style="--active-cols: {columns};"
+  style="--active-cols: {columns}; --mobile-top: {mobileTop};"
 >
   <slot />
 </div>
@@ -28,5 +29,16 @@
     flex-direction: row;
     box-sizing: border-box;
     transition: width 0.3s ease-in-out;
+  }
+
+  @media (max-width: 640px) {
+    .content-pane {
+      top: var(--mobile-top, 2.5vh);
+      bottom: calc(48px + var(--spacing-sm) * 2 + env(safe-area-inset-bottom, 0px));
+      left: var(--spacing-sm);
+      right: var(--spacing-sm);
+      width: auto;
+      border-radius: var(--radius-xl) var(--radius-xl) var(--radius-md) var(--radius-md);
+    }
   }
 </style>
