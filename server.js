@@ -56,71 +56,16 @@ app.use(
 require('./config/passport')(passport);
 
 // ============================================================================
-// Request logging
-// ============================================================================
-app.use(require('./middleware/requestLogger'));
-
-// ============================================================================
-// Health check
-// ============================================================================
-app.get('/health', async (req, res) => {
-  const health = {
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV,
-    version: require('./package.json').version,
-  };
-
-  try {
-    await db.sequelize.authenticate();
-    health.database = 'connected';
-  } catch (error) {
-    health.database = 'disconnected';
-    health.status = 'degraded';
-    logger.error('Health check: database connection failed', { error: error.message });
-  }
-
-  try {
-    const client = redis.getClient();
-    if (client && redis.isAvailable()) {
-      await client.ping();
-      health.redis = 'connected';
-    } else {
-      health.redis = 'disabled';
-    }
-  } catch (error) {
-    health.redis = 'disconnected';
-    health.status = 'degraded';
-    logger.error('Health check: Redis connection failed', { error: error.message });
-  }
-
-  res.status(health.status === 'ok' ? 200 : 503).json(health);
-});
-
-// ============================================================================
-// API routes
-// ============================================================================
-app.use('/api', require('./routes/api'));
-
-// ============================================================================
-// Error handling
-// ============================================================================
-const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
-
-app.use(notFoundHandler);
-app.use(errorHandler);
-
-// ============================================================================
 // Start
 // ============================================================================
 const PORT = process.env.PORT || 3000;
 
 async function initializeApp() {
   try {
+    // Initialize Redis first so the session store can use it
     await redis.initRedis();
 
-    // Session store — set up after Redis is connected so RedisStore is available
+    // Session — registered before routes so it runs for every request
     const redisClient = redis.getClient();
     let sessionStore;
     if (redisClient && redis.isAvailable()) {
@@ -146,6 +91,62 @@ async function initializeApp() {
     );
     app.use(passport.initialize());
     app.use(passport.session());
+
+    // ============================================================================
+    // Request logging
+    // ============================================================================
+    app.use(require('./middleware/requestLogger'));
+
+    // ============================================================================
+    // Health check
+    // ============================================================================
+    app.get('/health', async (req, res) => {
+      const health = {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV,
+        version: require('./package.json').version,
+      };
+
+      try {
+        await db.sequelize.authenticate();
+        health.database = 'connected';
+      } catch (error) {
+        health.database = 'disconnected';
+        health.status = 'degraded';
+        logger.error('Health check: database connection failed', { error: error.message });
+      }
+
+      try {
+        const client = redis.getClient();
+        if (client && redis.isAvailable()) {
+          await client.ping();
+          health.redis = 'connected';
+        } else {
+          health.redis = 'disabled';
+        }
+      } catch (error) {
+        health.redis = 'disconnected';
+        health.status = 'degraded';
+        logger.error('Health check: Redis connection failed', { error: error.message });
+      }
+
+      res.status(health.status === 'ok' ? 200 : 503).json(health);
+    });
+
+    // ============================================================================
+    // API routes
+    // ============================================================================
+    app.use('/api', require('./routes/api'));
+
+    // ============================================================================
+    // Error handling
+    // ============================================================================
+    const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
+
+    app.use(notFoundHandler);
+    app.use(errorHandler);
 
     await db.sequelize.authenticate();
     logger.info('Database connection established');
