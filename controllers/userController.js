@@ -187,7 +187,7 @@ exports.exportData = async (req, res) => {
           model: Attendee,
           as: 'attendees',
           required: false,
-          include: [{ model: User, as: 'user', attributes: ['email'] }],
+          include: [{ model: User, as: 'user', attributes: ['email', 'firstName', 'lastName'] }],
         },
       ],
       order: [['departureDate', 'ASC']],
@@ -209,14 +209,19 @@ exports.exportData = async (req, res) => {
         itemType: { [Op.in]: ['flight', 'hotel', 'transportation', 'car_rental', 'event'] },
         itemId: { [Op.in]: Object.values(allItemIds).flat() },
       },
-      include: [{ model: User, as: 'user', attributes: ['email'] }],
+      include: [{ model: User, as: 'user', attributes: ['email', 'firstName', 'lastName'] }],
     });
 
     // Group item attendees by itemId
     const attendeesByItemId = {};
     for (const a of itemAttendees) {
       if (!attendeesByItemId[a.itemId]) attendeesByItemId[a.itemId] = [];
-      attendeesByItemId[a.itemId].push({ email: a.user?.email, permissionLevel: a.permissionLevel });
+      attendeesByItemId[a.itemId].push({
+        email: a.user?.email,
+        firstName: a.user?.firstName,
+        lastName: a.user?.lastName,
+        permissionLevel: a.permissionLevel,
+      });
     }
 
     const stripItem = (item) => {
@@ -228,6 +233,8 @@ exports.exportData = async (req, res) => {
       const t = trip.toJSON();
       const tripAttendees = (t.attendees ?? []).map((a) => ({
         email: a.user?.email,
+        firstName: a.user?.firstName,
+        lastName: a.user?.lastName,
         permissionLevel: a.permissionLevel,
       }));
       return {
@@ -380,20 +387,34 @@ exports.executeImport = async (req, res) => {
       events: 'event',
     };
 
-    // Helper: add attendees to a newly created item by email lookup
-    const importAttendees = async (attendees, itemType, itemId, tripOwnerId) => {
+    const CompanionService = require('../services/CompanionService');
+    const companionService = new CompanionService();
+
+    // Helper: find or create a user by email (creates phantom if not found), then add as attendee
+    const importAttendees = async (attendees, itemType, itemId) => {
       if (!Array.isArray(attendees)) return;
       for (const a of attendees) {
         if (!a.email) continue;
         try {
-          const targetUser = await User.findOne({ where: { email: a.email.toLowerCase() } });
-          if (!targetUser) continue; // user doesn't exist in this env — skip silently
+          let targetUser = await User.findOne({ where: { email: a.email.toLowerCase() } });
+          if (!targetUser) {
+            // Create phantom user so the attendee link is preserved;
+            // they can claim the account when they register with this email.
+            if (!a.firstName || !a.lastName) continue; // can't create phantom without a name
+            const crypto = require('crypto');
+            targetUser = await User.create({
+              email: a.email.toLowerCase(),
+              password: crypto.randomBytes(32).toString('hex'),
+              firstName: a.firstName.trim(),
+              lastName: a.lastName.trim().charAt(0),
+              isPhantom: true,
+            });
+          }
           await Attendee.findOrCreate({
             where: { userId: targetUser.id, itemType, itemId },
             defaults: { permissionLevel: a.permissionLevel ?? 'view' },
           });
         } catch (err) {
-          // Non-fatal — log but continue
           logger.warn('IMPORT_ATTENDEE_SKIP', { email: a.email, itemType, error: err.message });
         }
       }
@@ -455,21 +476,21 @@ exports.executeImport = async (req, res) => {
       }
     }
 
-    // Import companions by email lookup
+    // Import companions — addCompanion handles phantom user creation automatically
     if (Array.isArray(importCompanions)) {
-      const CompanionService = require('../services/CompanionService');
-      const companionService = new CompanionService();
       for (const c of importCompanions) {
         if (!c.email) continue;
         try {
-          const targetUser = await User.findOne({ where: { email: c.email.toLowerCase() } });
-          if (!targetUser) continue; // user not in this env — skip
-          // Use the service so the reciprocal record is created correctly
-          await companionService.addCompanion(userId, targetUser.id, c.permissionLevel ?? 'view');
+          await companionService.addCompanion(
+            userId,
+            c.email,
+            c.permissionLevel ?? 'view',
+            c.firstName,
+            c.lastName
+          );
           imported++;
         } catch (err) {
-          // Duplicate companion is fine — ignore unique constraint errors
-          if (!err.message?.includes('already exists') && !err.name?.includes('SequelizeUniqueConstraintError')) {
+          if (!err.message?.includes('already exists')) {
             errors.push({ type: 'companion', email: c.email, error: err.message });
           }
         }
