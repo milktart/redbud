@@ -28,6 +28,7 @@
   // Import state
   let importFileError = '';
   let importData = null;       // annotated response from /import/preview
+  let importCompanions = [];   // companions array from parsed file
   let importSelections = {};   // { [key]: bool }
   let importLoading = false;
   let importSubmitting = false;
@@ -74,6 +75,7 @@
         return;
       }
 
+      importCompanions = Array.isArray(parsed.companions) ? parsed.companions : [];
       const result = await usersAPI.importPreview({ trips: parsed.trips });
       importData = result;
 
@@ -133,7 +135,7 @@
     });
 
     try {
-      const result = await usersAPI.executeImport(tripsPayload);
+      const result = await usersAPI.executeImport(tripsPayload, importCompanions);
       importResult = result;
       if (result.imported > 0) {
         await loadTripsAndItems();
@@ -3612,7 +3614,7 @@
         <PaneColumn span={1} divider={true}>
           <div class="edit-header">
             <h3 class="pane-title">Manage Data</h3>
-            <button class="close-button" on:click={() => { activeSettingsSection = null; importData = null; importSelections = {}; importResult = null; importFileError = ''; }} aria-label="Close">×</button>
+            <button class="close-button" on:click={() => { activeSettingsSection = null; importData = null; importCompanions = []; importSelections = {}; importResult = null; importFileError = ''; }} aria-label="Close">×</button>
           </div>
 
           <!-- Export section -->
@@ -3673,7 +3675,7 @@
               {/if}
 
               <div class="form-actions">
-                <button type="button" class="btn-secondary" on:click={() => { importData = null; importSelections = {}; importResult = null; importFileError = ''; }}>Clear</button>
+                <button type="button" class="btn-secondary" on:click={() => { importData = null; importCompanions = []; importSelections = {}; importResult = null; importFileError = ''; }}>Clear</button>
                 <button
                   type="button"
                   class="btn-primary"

@@ -172,7 +172,7 @@ exports.updateMe = async (req, res) => {
  */
 exports.exportData = async (req, res) => {
   try {
-    const { Trip, Flight, Hotel, Transportation, CarRental, Event } = require('../models');
+    const { Trip, Flight, Hotel, Transportation, CarRental, Event, Companion, Attendee, User } = require('../models');
     const userId = req.user.id;
 
     const trips = await Trip.findAll({
@@ -183,28 +183,84 @@ exports.exportData = async (req, res) => {
         { model: Transportation, as: 'transportation', required: false },
         { model: CarRental, as: 'carRentals', required: false },
         { model: Event, as: 'events', required: false },
+        {
+          model: Attendee,
+          as: 'attendees',
+          required: false,
+          include: [{ model: User, as: 'user', attributes: ['email'] }],
+        },
       ],
       order: [['departureDate', 'ASC']],
     });
 
+    // Helper to get item attendees keyed by itemId
+    const allItemIds = { flight: [], hotel: [], transportation: [], car_rental: [], event: [] };
+    for (const trip of trips) {
+      for (const f of trip.flights ?? []) allItemIds.flight.push(f.id);
+      for (const h of trip.hotels ?? []) allItemIds.hotel.push(h.id);
+      for (const t of trip.transportation ?? []) allItemIds.transportation.push(t.id);
+      for (const c of trip.carRentals ?? []) allItemIds.car_rental.push(c.id);
+      for (const e of trip.events ?? []) allItemIds.event.push(e.id);
+    }
+
+    const { Op } = require('sequelize');
+    const itemAttendees = await Attendee.findAll({
+      where: {
+        itemType: { [Op.in]: ['flight', 'hotel', 'transportation', 'car_rental', 'event'] },
+        itemId: { [Op.in]: Object.values(allItemIds).flat() },
+      },
+      include: [{ model: User, as: 'user', attributes: ['email'] }],
+    });
+
+    // Group item attendees by itemId
+    const attendeesByItemId = {};
+    for (const a of itemAttendees) {
+      if (!attendeesByItemId[a.itemId]) attendeesByItemId[a.itemId] = [];
+      attendeesByItemId[a.itemId].push({ email: a.user?.email, permissionLevel: a.permissionLevel });
+    }
+
+    const stripItem = (item) => {
+      const { id, userId: _u, createdBy: _c, tripId: _t, createdAt, updatedAt, ...rest } = item;
+      return { ...rest, _sourceId: id, attendees: attendeesByItemId[id] ?? [] };
+    };
+
     const tripsData = trips.map((trip) => {
       const t = trip.toJSON();
+      const tripAttendees = (t.attendees ?? []).map((a) => ({
+        email: a.user?.email,
+        permissionLevel: a.permissionLevel,
+      }));
       return {
-        id: t.id,
+        _sourceId: t.id,
         name: t.name,
         departureDate: t.departureDate,
         returnDate: t.returnDate,
         purpose: t.purpose,
-        flights: t.flights ?? [],
-        hotels: t.hotels ?? [],
-        transportation: t.transportation ?? [],
-        carRentals: t.carRentals ?? [],
-        events: t.events ?? [],
+        status: t.status,
+        attendees: tripAttendees,
+        flights: (t.flights ?? []).map(stripItem),
+        hotels: (t.hotels ?? []).map(stripItem),
+        transportation: (t.transportation ?? []).map(stripItem),
+        carRentals: (t.carRentals ?? []).map(stripItem),
+        events: (t.events ?? []).map(stripItem),
       };
     });
 
+    // Export companions (by email so they can be re-linked in a different env)
+    const companions = await Companion.findAll({
+      where: { userId, permissionLevel: { [Op.ne]: 'none' } },
+      include: [{ model: User, as: 'companionUser', attributes: ['email', 'firstName', 'lastName'] }],
+    });
+    const companionsData = companions.map((c) => ({
+      email: c.companionUser?.email,
+      firstName: c.companionUser?.firstName,
+      lastName: c.companionUser?.lastName,
+      permissionLevel: c.permissionLevel,
+    }));
+
     const exportData = {
       exportedAt: new Date().toISOString(),
+      companions: companionsData,
       trips: tripsData,
     };
     res.setHeader('Content-Disposition', 'attachment; filename="travel-data.json"');
@@ -295,9 +351,9 @@ exports.importPreview = async (req, res) => {
  */
 exports.executeImport = async (req, res) => {
   try {
-    const { Trip, Flight, Hotel, Transportation, CarRental, Event } = require('../models');
+    const { Trip, Flight, Hotel, Transportation, CarRental, Event, Companion, Attendee, User } = require('../models');
     const userId = req.user.id;
-    const { trips: importTrips } = req.body;
+    const { trips: importTrips, companions: importCompanions } = req.body;
 
     if (!Array.isArray(importTrips)) {
       return apiResponse.badRequest(res, 'Request body must contain a "trips" array');
@@ -308,11 +364,39 @@ exports.executeImport = async (req, res) => {
     const errors = [];
 
     const ITEM_MODELS = {
-      flights: { model: Flight, as: 'flights' },
-      hotels: { model: Hotel, as: 'hotels' },
-      transportation: { model: Transportation, as: 'transportation' },
-      carRentals: { model: CarRental, as: 'carRentals' },
-      events: { model: Event, as: 'events' },
+      flights: Flight,
+      hotels: Hotel,
+      transportation: Transportation,
+      carRentals: CarRental,
+      events: Event,
+    };
+
+    // Map itemType key → Attendee itemType enum value
+    const ITEM_TYPE_ENUM = {
+      flights: 'flight',
+      hotels: 'hotel',
+      transportation: 'transportation',
+      carRentals: 'car_rental',
+      events: 'event',
+    };
+
+    // Helper: add attendees to a newly created item by email lookup
+    const importAttendees = async (attendees, itemType, itemId, tripOwnerId) => {
+      if (!Array.isArray(attendees)) return;
+      for (const a of attendees) {
+        if (!a.email) continue;
+        try {
+          const targetUser = await User.findOne({ where: { email: a.email.toLowerCase() } });
+          if (!targetUser) continue; // user doesn't exist in this env — skip silently
+          await Attendee.findOrCreate({
+            where: { userId: targetUser.id, itemType, itemId },
+            defaults: { permissionLevel: a.permissionLevel ?? 'view' },
+          });
+        } catch (err) {
+          // Non-fatal — log but continue
+          logger.warn('IMPORT_ATTENDEE_SKIP', { email: a.email, itemType, error: err.message });
+        }
+      }
     };
 
     for (const tripEntry of importTrips) {
@@ -322,43 +406,71 @@ exports.executeImport = async (req, res) => {
 
       if (tripSelected) {
         try {
-          // Strip export-only fields before creating
-          const { id, userId: _uid, createdBy: _cby, createdAt, updatedAt, ...cleanTripData } = tripData;
+          const {
+            id, _sourceId, userId: _uid, createdBy: _cby, createdAt, updatedAt,
+            attendees: tripAttendees, ...cleanTripData
+          } = tripData;
           const newTrip = await Trip.create({ ...cleanTripData, userId, createdBy: userId });
           newTripId = newTrip.id;
           imported++;
+          await importAttendees(tripAttendees, 'trip', newTripId, userId);
         } catch (err) {
           errors.push({ type: 'trip', name: tripData.name, error: err.message });
           skipped++;
-          // Skip items if trip creation failed
           continue;
         }
       } else {
         skipped++;
-        // Still allow items to be imported standalone (with original tripId or null)
         newTripId = null;
       }
 
       // Import items
       for (const [itemType, itemEntries] of Object.entries(itemsMap)) {
-        const modelEntry = ITEM_MODELS[itemType];
-        if (!modelEntry) continue;
+        const model = ITEM_MODELS[itemType];
+        if (!model) continue;
 
         for (const itemEntry of itemEntries) {
           const { data: itemData, selected: itemSelected } = itemEntry;
           if (!itemSelected) { skipped++; continue; }
 
           try {
-            const { id, tripId: _tid, createdAt, updatedAt, ...cleanItemData } = itemData;
-            await modelEntry.model.create({
+            const {
+              id, _sourceId, userId: _uid, createdBy: _cby,
+              tripId: _tid, createdAt, updatedAt,
+              attendees: itemAttendees, ...cleanItemData
+            } = itemData;
+            const newItem = await model.create({
               ...cleanItemData,
               tripId: newTripId,
               userId,
+              createdBy: userId,
             });
             imported++;
+            await importAttendees(itemAttendees, ITEM_TYPE_ENUM[itemType], newItem.id, userId);
           } catch (err) {
             errors.push({ type: itemType, error: err.message });
             skipped++;
+          }
+        }
+      }
+    }
+
+    // Import companions by email lookup
+    if (Array.isArray(importCompanions)) {
+      const CompanionService = require('../services/CompanionService');
+      const companionService = new CompanionService();
+      for (const c of importCompanions) {
+        if (!c.email) continue;
+        try {
+          const targetUser = await User.findOne({ where: { email: c.email.toLowerCase() } });
+          if (!targetUser) continue; // user not in this env — skip
+          // Use the service so the reciprocal record is created correctly
+          await companionService.addCompanion(userId, targetUser.id, c.permissionLevel ?? 'view');
+          imported++;
+        } catch (err) {
+          // Duplicate companion is fine — ignore unique constraint errors
+          if (!err.message?.includes('already exists') && !err.name?.includes('SequelizeUniqueConstraintError')) {
+            errors.push({ type: 'companion', email: c.email, error: err.message });
           }
         }
       }

@@ -174,8 +174,8 @@ export const usersAPI = {
     return response.data;
   },
 
-  async executeImport(trips) {
-    const response = await api.post('/users/import/execute', { trips });
+  async executeImport(trips, companions) {
+    const response = await api.post('/users/import/execute', { trips, companions });
     return response.data;
   },
 };
