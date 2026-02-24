@@ -51,39 +51,9 @@ app.use(
 );
 
 // ============================================================================
-// Session
-// ============================================================================
-let sessionStore;
-const redisClient = redis.getClient();
-
-if (redisClient && redis.isAvailable()) {
-  sessionStore = new RedisStore({ client: redisClient, prefix: 'sess:' });
-  logger.info('Using Redis for session storage');
-} else {
-  logger.info('Using memory store for sessions (Redis disabled or unavailable)');
-}
-
-app.use(
-  session({
-    store: sessionStore,
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      maxAge: parseInt(process.env.SESSION_MAX_AGE, 10) || MS_PER_DAY,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : false,
-    },
-  })
-);
-
-// ============================================================================
 // Authentication
 // ============================================================================
 require('./config/passport')(passport);
-app.use(passport.initialize());
-app.use(passport.session());
 
 // ============================================================================
 // Request logging
@@ -149,6 +119,34 @@ const PORT = process.env.PORT || 3000;
 async function initializeApp() {
   try {
     await redis.initRedis();
+
+    // Session store — set up after Redis is connected so RedisStore is available
+    const redisClient = redis.getClient();
+    let sessionStore;
+    if (redisClient && redis.isAvailable()) {
+      sessionStore = new RedisStore({ client: redisClient, prefix: 'sess:' });
+      logger.info('Using Redis for session storage');
+    } else {
+      logger.info('Using memory store for sessions (Redis disabled or unavailable)');
+    }
+
+    app.use(
+      session({
+        store: sessionStore,
+        secret: process.env.SESSION_SECRET,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+          maxAge: parseInt(process.env.SESSION_MAX_AGE, 10) || MS_PER_DAY,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'strict' : false,
+        },
+      })
+    );
+    app.use(passport.initialize());
+    app.use(passport.session());
+
     await db.sequelize.authenticate();
     logger.info('Database connection established');
 
