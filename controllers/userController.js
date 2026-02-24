@@ -263,7 +263,7 @@ exports.exportData = async (req, res) => {
         departureDate: t.departureDate,
         returnDate: t.returnDate,
         purpose: t.purpose,
-        status: t.status,
+        isConfirmed: t.isConfirmed,
         attendees: tripAttendees,
         flights: (t.flights ?? []).map(stripItem),
         hotels: (t.hotels ?? []).map(stripItem),
