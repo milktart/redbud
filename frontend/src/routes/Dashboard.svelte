@@ -56,9 +56,23 @@
     }
   }
 
+  let importDragOver = false;
+
+  function handleImportDrop(e) {
+    e.preventDefault();
+    importDragOver = false;
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    processImportFile(file);
+  }
+
   async function handleImportFileChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+    processImportFile(file);
+  }
+
+  async function processImportFile(file) {
 
     importFileError = '';
     importData = null;
@@ -118,7 +132,8 @@
     } finally {
       importLoading = false;
       // Reset input so same file can be re-selected
-      e.target.value = '';
+      const input = document.getElementById('import-file-input');
+      if (input) input.value = '';
     }
   }
 
@@ -3661,7 +3676,7 @@
           <div class="manage-data-section">
             <h4 class="manage-data-section-title">Export Data</h4>
             <p class="settings-export-description">Download a copy of all your travel data including trips, flights, hotels, and other items.</p>
-            <div class="form-actions">
+            <div class="form-group">
               <button type="button" class="btn-primary" on:click={handleExportData}>Download</button>
             </div>
           </div>
@@ -3679,14 +3694,25 @@
                 style="display:none"
                 on:change={handleImportFileChange}
               />
-              <button
-                type="button"
-                class="btn-secondary import-file-btn"
-                on:click={() => document.getElementById('import-file-input').click()}
-                disabled={importLoading}
+              <div
+                class="import-drop-zone"
+                class:import-drop-zone--active={importDragOver}
+                class:import-drop-zone--disabled={importLoading}
+                role="button"
+                tabindex="0"
+                on:click={() => !importLoading && document.getElementById('import-file-input').click()}
+                on:keydown={(e) => e.key === 'Enter' && !importLoading && document.getElementById('import-file-input').click()}
+                on:dragover={(e) => { e.preventDefault(); importDragOver = true; }}
+                on:dragleave={() => importDragOver = false}
+                on:drop={handleImportDrop}
               >
-                {importLoading ? 'Loading...' : 'Choose File'}
-              </button>
+                <svg class="import-drop-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+                <span class="import-drop-label">
+                  {importLoading ? 'Loading...' : 'Drop file here or click to choose'}
+                </span>
+              </div>
             </div>
 
             {#if importFileError}
@@ -4706,8 +4732,42 @@
   }
 
   /* Import Panel */
-  .import-file-btn {
+  .import-drop-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
     width: 100%;
+    padding: var(--spacing-lg) var(--spacing-md);
+    background: var(--glass-bg-light);
+    border: 2.5px dotted var(--glass-border-dark);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+    box-sizing: border-box;
+  }
+
+  .import-drop-zone:hover,
+  .import-drop-zone--active {
+    border-color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 5%, transparent);
+    color: var(--primary-color);
+  }
+
+  .import-drop-zone--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .import-drop-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex-shrink: 0;
+  }
+
+  .import-drop-label {
+    font-size: 0.85rem;
   }
 
   .import-summary {
