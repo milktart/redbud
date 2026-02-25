@@ -25,7 +25,9 @@
     cancelAnimationFrame(rafId);
   });
 
-  $: scalerStyle = zoom < 1 ? `zoom: ${zoom};` : '';
+  $: scalerStyle = zoom < 1
+    ? `transform: scale(${zoom}); width: ${(1 / zoom) * 100}%; transform-origin: top left;`
+    : '';
 
   $: paddingStyle = `padding: calc(var(--spacing-2xl) * ${zoom});`;
 </script>
