@@ -455,14 +455,8 @@
     display: grid;
     grid-template-columns: 38px 1fr;
     gap: 0;
-    border: 1px solid var(--glass-border);
-    border-top: none;
     min-height: calc(var(--row-count) * 20px + 18px);
     background: transparent;
-  }
-
-  .month-row:first-child {
-    border-top: 1px solid var(--glass-border);
   }
 
   .month-label {
@@ -522,8 +516,8 @@
   }
 
   .day-cell.today {
-    background: rgba(59, 130, 246, 0.1);
-    border-right: 2px solid var(--primary-color);
+    background: rgba(220, 38, 38, 0.1);
+    border-right: 2px solid red;
   }
 
   .day-number {
@@ -538,7 +532,7 @@
   }
 
   .day-cell.today .day-number {
-    color: var(--primary-color);
+    color: red;
     font-weight: 600;
   }
 
