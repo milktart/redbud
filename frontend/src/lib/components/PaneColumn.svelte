@@ -7,17 +7,22 @@
   let columnEl;
   let zoom = 1;
   let ro;
+  let rafId;
 
   onMount(() => {
     ro = new ResizeObserver(([entry]) => {
-      const w = entry.contentRect.width;
-      zoom = w < 275 ? w / 275 : 1;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const w = entry.contentRect.width;
+        zoom = w < 275 ? w / 275 : 1;
+      });
     });
     ro.observe(columnEl);
   });
 
   onDestroy(() => {
     if (ro) ro.disconnect();
+    cancelAnimationFrame(rafId);
   });
 
   $: scalerStyle = zoom < 1 ? `zoom: ${zoom};` : '';
