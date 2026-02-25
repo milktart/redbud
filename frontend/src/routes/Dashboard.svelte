@@ -1438,6 +1438,35 @@
     return m === 0 ? `${h}h` : `${h}h ${m}m`;
   }
 
+  function getLayoverDuration(prevFlight, nextFlight) {
+    if (!prevFlight?.arrivalDateTime || !nextFlight?.departureDateTime) return null;
+    const diffMs = new Date(nextFlight.departureDateTime) - new Date(prevFlight.arrivalDateTime);
+    if (diffMs <= 0 || diffMs >= 30 * 60 * 60 * 1000) return null;
+    const totalMins = Math.round(diffMs / 60000);
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    if (h === 0) return `${m}m`;
+    return m === 0 ? `${h}h` : `${h}h ${m}m`;
+  }
+
+  function buildTripRenderRows(itemsByDate) {
+    const rows = [];
+    let lastFlight = null;
+    for (const dateGroup of itemsByDate) {
+      rows.push({ type: 'date-header', dateKey: dateGroup.dateKey });
+      for (const item of dateGroup.items) {
+        if (item.itemType === 'flight' && lastFlight) {
+          const layover = getLayoverDuration(lastFlight, item);
+          if (layover) rows.push({ type: 'layover', duration: layover });
+        }
+        rows.push({ type: 'item', item });
+        if (item.itemType === 'flight') lastFlight = item;
+        else lastFlight = null;
+      }
+    }
+    return rows;
+  }
+
   function getItemsForTrip(tripId) {
     return items.filter(item => item.tripId === tripId);
   }
@@ -2163,9 +2192,18 @@
 
                   <!-- Items grouped by date -->
                   {#if entry.itemsByDate.length > 0}
-                    {#each entry.itemsByDate as dateGroup}
-                      <div class="date-group-header">{formatDateGroupHeader(dateGroup.dateKey)}</div>
-                      {#each dateGroup.items as item}
+                    {@const renderRows = buildTripRenderRows(entry.itemsByDate)}
+                    {#each renderRows as row}
+                      {#if row.type === 'date-header'}
+                        <div class="date-group-header">{formatDateGroupHeader(row.dateKey)}</div>
+                      {:else if row.type === 'layover'}
+                        <div class="layover-row">
+                          <span class="layover-line"></span>
+                          <span class="layover-label"><svg xmlns="http://www.w3.org/2000/svg" height="14px" viewBox="0 -960 960 960" width="14px" fill="#1f1f1f"><path d="M360-200v-80h80q-15-138-118-229T80-600v-80q129 0 237 68t163 184q38-81 100-143.5T719-680H560v-80h280v280h-80v-132q-93 57-160 141t-80 191h80v80H360Z"/></svg>{row.duration}</span>
+                          <span class="layover-line"></span>
+                        </div>
+                      {:else}
+                        {@const item = row.item}
                         <div class="item-row" class:selected={selectedItem?.id === item.id} class:tentative={item.isConfirmed === false} on:click={() => handleItemClick(item)}>
                           <div class="item-icon-wrap">
                             {#if item.itemType === 'flight' && item.flightNumber}
@@ -2194,7 +2232,7 @@
                             </div>
                           {/if}
                         </div>
-                      {/each}
+                      {/if}
                     {/each}
                   {:else}
                     <div class="trip-empty">No items in this trip yet</div>
@@ -4957,6 +4995,31 @@
 
   .date-group-header:first-of-type {
     margin-top: 0;
+  }
+
+  .layover-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: var(--spacing-lg);
+    padding: 2px var(--spacing-sm);
+    margin-left: var(--spacing-sm);
+  }
+
+  .layover-line {
+    flex: 1;
+    max-width: 75px;
+    height: 1px;
+    background: var(--grey-300);
+  }
+
+  .layover-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.7rem;
+    color: var(--gray-dark);
+    white-space: nowrap;
   }
 
   .item-row {
