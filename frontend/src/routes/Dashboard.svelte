@@ -767,6 +767,25 @@
     addNewView = 'itemForm';
   }
 
+  function openHotelFormForTrip(tripId) {
+    activePane = 'addNew';
+    addNewView = 'itemForm';
+    resetAttendeeState();
+    itemForm = {
+      itemType: 'hotel',
+      tripId: tripId || '',
+      status: 'confirmed',
+      airline: '', flightNumber: '', departureDate: '', departureTime: '', arrivalDate: '', arrivalTime: '',
+      origin: '', destination: '', pnr: '', seat: '',
+      hotelName: '', address: '', phone: '', checkInDate: '', checkInTime: '14:00', checkOutDate: '', checkOutTime: '11:00',
+      confirmationNumber: '', roomNumber: '',
+      method: '', journeyNumber: '',
+      name: '', startDate: '', startTime: '', endDate: '', endTime: '', allDay: false, location: '',
+      contactPhone: '', contactEmail: '', description: '', eventUrl: '',
+      company: '', pickupLocation: '', pickupDate: '', pickupTime: '', dropoffLocation: '', dropoffDate: '', dropoffTime: ''
+    };
+  }
+
   function backToMenu() {
     addNewView = 'menu';
     resetAttendeeState();
@@ -1449,9 +1468,32 @@
     return m === 0 ? `${h}h` : `${h}h ${m}m`;
   }
 
-  function buildTripRenderRows(itemsByDate) {
+  function getItemEndDateTime(item) {
+    switch (item.itemType) {
+      case 'flight': return item.arrivalDateTime;
+      case 'hotel': return item.checkOutDateTime;
+      case 'transportation': return item.arrivalDateTime;
+      case 'event': return item.endDateTime;
+      case 'car_rental': return item.dropoffDateTime;
+      default: return null;
+    }
+  }
+
+  // Item types that have a meaningful arrival/end time to anchor accommodation gap detection
+  const TRAVEL_ANCHOR_TYPES = new Set(['flight', 'transportation', 'car_rental']);
+
+  function buildTripRenderRows(itemsByDate, tripId) {
     const rows = [];
     let lastFlight = null;
+    // lastAnchor: the most recent flight/transportation/car_rental item (has a reliable end time)
+    let lastAnchor = null;
+    // gapCardInserted: track the row index after lastAnchor so we only insert one card per gap
+    let gapCardInsertedAfter = null;
+    // Flatten all items in chronological order for gap detection
+    const allItems = itemsByDate.flatMap(dg => dg.items);
+    // Build a set of hotel date ranges to check coverage
+    const hotels = allItems.filter(i => i.itemType === 'hotel');
+
     for (const dateGroup of itemsByDate) {
       rows.push({ type: 'date-header', dateKey: dateGroup.dateKey });
       for (const item of dateGroup.items) {
@@ -1460,6 +1502,41 @@
           if (layover) rows.push({ type: 'layover', duration: layover });
         }
         rows.push({ type: 'item', item });
+
+        // After pushing an anchor item, check if the gap to the next anchor exceeds
+        // 30h with no hotel coverage — insert the suggestion card immediately after.
+        if (activeTimelineTab === 'upcoming' && TRAVEL_ANCHOR_TYPES.has(item.itemType)) {
+          if (lastAnchor && gapCardInsertedAfter !== lastAnchor) {
+            const prevEnd = getItemEndDateTime(lastAnchor);
+            const nextStart = getItemSortDateTime(item);
+            if (prevEnd && nextStart) {
+              const gapMs = new Date(nextStart) - new Date(prevEnd);
+              const thirtyHoursMs = 30 * 60 * 60 * 1000;
+              if (gapMs > thirtyHoursMs) {
+                const gapCovered = hotels.some(h => {
+                  const hotelStart = h.checkInDateTime;
+                  const hotelEnd = h.checkOutDateTime;
+                  if (!hotelStart || !hotelEnd) return false;
+                  return new Date(hotelStart) < new Date(nextStart) && new Date(hotelEnd) > new Date(prevEnd);
+                });
+                if (!gapCovered) {
+                  // Find the index of the lastAnchor item row and insert the card right after it
+                  let insertIdx = rows.length - 1;
+                  for (let i = rows.length - 2; i >= 0; i--) {
+                    if (rows[i].type === 'item' && rows[i].item === lastAnchor) {
+                      insertIdx = i + 1;
+                      break;
+                    }
+                  }
+                  rows.splice(insertIdx, 0, { type: 'accommodation-gap', tripId });
+                  gapCardInsertedAfter = lastAnchor;
+                }
+              }
+            }
+          }
+          lastAnchor = item;
+        }
+
         if (item.itemType === 'flight') lastFlight = item;
         else lastFlight = null;
       }
@@ -2192,7 +2269,7 @@
 
                   <!-- Items grouped by date -->
                   {#if entry.itemsByDate.length > 0}
-                    {@const renderRows = buildTripRenderRows(entry.itemsByDate)}
+                    {@const renderRows = buildTripRenderRows(entry.itemsByDate, entry.trip.id)}
                     {#each renderRows as row}
                       {#if row.type === 'date-header'}
                         <div class="date-group-header">{formatDateGroupHeader(row.dateKey)}</div>
@@ -2201,6 +2278,16 @@
                           <span class="layover-line"></span>
                           <span class="layover-label"><svg xmlns="http://www.w3.org/2000/svg" height="14px" viewBox="0 -960 960 960" width="14px" fill="#1f1f1f"><path d="M360-200v-80h80q-15-138-118-229T80-600v-80q129 0 237 68t163 184q38-81 100-143.5T719-680H560v-80h280v280h-80v-132q-93 57-160 141t-80 191h80v80H360Z"/></svg>{row.duration}</span>
                           <span class="layover-line"></span>
+                        </div>
+                      {:else if row.type === 'accommodation-gap'}
+                        <div class="item-row accommodation-gap" role="button" tabindex="0" on:click={() => openHotelFormForTrip(row.tripId)} on:keydown={(e) => e.key === 'Enter' && openHotelFormForTrip(row.tripId)}>
+                          <div class="item-icon-wrap">
+                            <span class="item-icon">{@html getItemIcon('hotel')}</span>
+                          </div>
+                          <div class="item-details">
+                            <span class="item-label accommodation-gap-label">Book accommodation</span>
+                            <div class="item-meta"></div>
+                          </div>
                         </div>
                       {:else}
                         {@const item = row.item}
@@ -5020,6 +5107,21 @@
     font-size: 0.7rem;
     color: var(--gray-dark);
     white-space: nowrap;
+  }
+
+  .item-row.accommodation-gap {
+    background: var(--grey-200);
+    border-left: 3px dotted var(--grey-500);
+    padding-left: calc(var(--spacing-sm) - 1px);
+  }
+
+  .item-row.accommodation-gap:hover {
+    background: var(--grey-300);
+  }
+
+  .accommodation-gap-label {
+    color: var(--grey-600);
+    font-style: italic;
   }
 
   .item-row {
