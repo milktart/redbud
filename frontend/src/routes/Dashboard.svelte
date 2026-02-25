@@ -914,7 +914,11 @@
       friendsTrips = response.friendsTrips || [];
       standaloneItems = flattenStandaloneObj(response.standalone || {});
       attendeeStandaloneItems = flattenStandaloneObj(response.attendeeStandalone || {});
-      companionStandaloneItems = flattenStandaloneObj(response.companionStandalone || {});
+      const allCompanionStandalone = flattenStandaloneObj(response.companionStandalone || {});
+      // Items I was explicitly added to as an attendee belong on my timeline.
+      // Remove them from the companion list to avoid showing them twice.
+      const attendeeItemIds = new Set(attendeeStandaloneItems.map(i => i.id));
+      companionStandaloneItems = allCompanionStandalone.filter(i => !attendeeItemIds.has(i.id));
     } catch (err) {
       trips = [];
       friendsTrips = [];
