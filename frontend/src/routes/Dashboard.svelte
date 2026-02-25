@@ -2290,7 +2290,7 @@
                             <span class="item-icon">{@html getItemIcon('hotel')}</span>
                           </div>
                           <div class="item-details">
-                            <span class="item-label accommodation-gap-label">Book accommodation</span>
+                            <span class="item-label accommodation-gap-label">Accommodation booked?</span>
                           </div>
                         </div>
                       {:else}
