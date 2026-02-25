@@ -11,7 +11,7 @@
   onMount(() => {
     ro = new ResizeObserver(([entry]) => {
       const w = entry.contentRect.width;
-      zoom = w < 300 ? w / 300 : 1;
+      zoom = w < 275 ? w / 275 : 1;
     });
     ro.observe(columnEl);
   });
@@ -19,15 +19,19 @@
   onDestroy(() => {
     if (ro) ro.disconnect();
   });
+
+  $: scalerStyle = zoom < 1 ? `zoom: ${zoom};` : '';
+
+  $: paddingStyle = `padding: calc(var(--spacing-2xl) * ${zoom});`;
 </script>
 
 <div
   bind:this={columnEl}
   class="pane-column"
   class:divider
-  style="width: calc(var(--pane-col-unit) * {span});"
+  style="width: calc(var(--pane-col-unit) * {span}); {paddingStyle}"
 >
-  <div class="pane-column-scaler" style="zoom: {zoom};">
+  <div class="pane-column-scaler" style={scalerStyle}>
     <slot />
   </div>
 </div>
@@ -40,7 +44,6 @@
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    padding: var(--spacing-2xl);
     box-sizing: border-box;
   }
 
@@ -60,6 +63,6 @@
     border-left: 1px solid var(--grey-200);
   }
   .pane-column-scaler {
-    transform-origin: top left;
+    flex-shrink: 0;
   }
 </style>

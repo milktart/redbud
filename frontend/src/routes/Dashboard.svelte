@@ -518,6 +518,7 @@
   let L; // Leaflet library
 
   // Calendar filter state
+  let showCalendarFilterSheet = false;
   let visibleItemTypes = {
     trip: true,
     flight: true,
@@ -2286,7 +2287,6 @@
                           </div>
                           <div class="item-details">
                             <span class="item-label accommodation-gap-label">Book accommodation</span>
-                            <div class="item-meta"></div>
                           </div>
                         </div>
                       {:else}
@@ -3889,8 +3889,9 @@
   {/if}
 
   {#if activePane === 'calendar'}
-    <ContentPane columns={4}>
-      <!-- Filter column -->
+    <ContentPane columns={isMobileView ? 1 : 4}>
+      <!-- Filter column — desktop only -->
+      {#if !isMobileView}
       <PaneColumn span={1}>
         <h3 class="pane-title">Filters</h3>
         <div class="type-filter-strip">
@@ -3976,9 +3977,19 @@
           </div>
         {/if}
       </PaneColumn>
+      {/if}
 
       <!-- Calendar column -->
-      <PaneColumn span={3} divider={true}>
+      <PaneColumn span={isMobileView ? 4 : 3} divider={!isMobileView}>
+        {#if isMobileView}
+          <div class="calendar-mobile-header">
+            <h3 class="pane-title" style="margin:0">Calendar</h3>
+            <button class="calendar-filter-btn" on:click={() => showCalendarFilterSheet = true} title="Filters">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+              Filters
+            </button>
+          </div>
+        {/if}
         <CalendarView
           {trips}
           standaloneItems={[...standaloneItems, ...attendeeStandaloneItems]}
@@ -3988,6 +3999,64 @@
         />
       </PaneColumn>
     </ContentPane>
+
+    <!-- Mobile calendar filter bottom sheet -->
+    {#if isMobileView && showCalendarFilterSheet}
+      <div class="edit-sheet-backdrop" on:click={() => showCalendarFilterSheet = false}></div>
+      <div class="edit-sheet edit-sheet-open">
+        <div class="filter-sheet-handle"></div>
+        <div class="edit-sheet-scroll">
+          <div class="filter-sheet-header">
+            <h3 class="pane-title" style="margin:0">Filters</h3>
+            <button class="close-btn" on:click={() => showCalendarFilterSheet = false}>✕</button>
+          </div>
+          <div class="type-filter-strip">
+            <button class="type-filter-btn" class:type-filter-off={!visibleItemTypes.trip} style="--filter-color: #3b82f6" on:click={() => { visibleItemTypes = { ...visibleItemTypes, trip: !visibleItemTypes.trip }; }} title="Trip">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M303.5-376.5Q327-400 360-400t56.5 23.5Q440-353 440-320t-23.5 56.5Q393-240 360-240t-56.5-23.5Q280-287 280-320t23.5-56.5ZM480-400h240q33 0 56.5 23.5T800-320v280h-80v-80H240v80h-80v-400h80v240h240v-200Zm150-40L512-654 406-548l10 68-30 30-47-88-88-48 30-30 68 9 106-106-215-117 38-38 264 68 108-108q12-12 29-12t29 12q12 12 12 29t-12 29L600-742l68 264-38 38Zm90 240v-120H560v120h160Zm-160 0v-120 120Z"/></svg>
+            </button>
+            <button class="type-filter-btn" class:type-filter-off={!visibleItemTypes.flight} style="--filter-color: #10b981" on:click={() => { visibleItemTypes = { ...visibleItemTypes, flight: !visibleItemTypes.flight }; }} title="Flight">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>
+            </button>
+            <button class="type-filter-btn" class:type-filter-off={!visibleItemTypes.hotel} style="--filter-color: #f59e0b" on:click={() => { visibleItemTypes = { ...visibleItemTypes, hotel: !visibleItemTypes.hotel }; }} title="Hotel">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3m12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9a4 4 0 0 0-4-4"/></svg>
+            </button>
+            <button class="type-filter-btn" class:type-filter-off={!visibleItemTypes.transportation} style="--filter-color: #8b5cf6" on:click={() => { visibleItemTypes = { ...visibleItemTypes, transportation: !visibleItemTypes.transportation }; }} title="Transportation">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4zm3.5 1a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M6 10V6h12v4z"/></svg>
+            </button>
+            <button class="type-filter-btn" class:type-filter-off={!visibleItemTypes.car_rental} style="--filter-color: #ec4899" on:click={() => { visibleItemTypes = { ...visibleItemTypes, car_rental: !visibleItemTypes.car_rental }; }} title="Car Rental">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-8zM6.5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m11 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M5 11l1.5-4.5h11L19 11z"/></svg>
+            </button>
+            <button class="type-filter-btn" class:type-filter-off={!visibleItemTypes.event} style="--filter-color: #06b6d4" on:click={() => { visibleItemTypes = { ...visibleItemTypes, event: !visibleItemTypes.event }; }} title="Event">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5zM16 1v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1zm3 18H5V8h14z"/></svg>
+            </button>
+          </div>
+          {#if companions.filter(c => c.reversePermissionLevel && c.reversePermissionLevel !== 'none').length > 0}
+            <h4 class="filter-section-label" style="margin-top: var(--spacing-lg)">Friends</h4>
+            <div class="companion-filter-list">
+              {#each companions.filter(c => c.reversePermissionLevel && c.reversePermissionLevel !== 'none') as c (c.companionUser.id)}
+                {@const uid = c.companionUser.id}
+                {@const selected = selectedCompanionIds.has(uid)}
+                {@const initials = ((c.companionUser.firstName?.[0] ?? '') + (c.companionUser.lastName?.[0] ?? '')).toUpperCase() || c.companionUser.email?.[0]?.toUpperCase() || '?'}
+                {@const name = ((c.companionUser.firstName ?? '') + ' ' + (c.companionUser.lastName ?? '')).trim() || c.companionUser.email}
+                <button
+                  class="companion-filter-btn"
+                  class:companion-filter-selected={selected}
+                  title={name}
+                  on:click={() => {
+                    const next = new Set(selectedCompanionIds);
+                    if (next.has(uid)) next.delete(uid); else next.add(uid);
+                    selectedCompanionIds = next;
+                  }}
+                >
+                  <span class="companion-filter-avatar">{initials}</span>
+                  <span class="companion-filter-name">{name}</span>
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      </div>
+    {/if}
   {/if}
 
   {#if activePane === 'settings'}
@@ -4629,6 +4698,7 @@
     inset: 0;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
   }
 
   .map-container {
@@ -4700,7 +4770,7 @@
   .type-filter-strip {
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
+    gap: var(--spacing-xs);
     width: 100%;
   }
 
@@ -4710,6 +4780,7 @@
     justify-content: center;
     flex: 1 1 0;
     aspect-ratio: 1;
+    max-width: 48px;
     border-radius: var(--radius-sm);
     border: none;
     background: color-mix(in srgb, var(--filter-color) 15%, transparent);
@@ -4757,17 +4828,14 @@
     background: transparent;
     cursor: pointer;
     text-align: left;
-    opacity: 0.45;
-    transition: opacity 0.15s, background 0.15s;
+    transition: background 0.15s;
   }
 
   .companion-filter-btn:hover {
     background: var(--glass-bg-light);
-    opacity: 0.75;
   }
 
   .companion-filter-btn.companion-filter-selected {
-    opacity: 1;
     background: var(--glass-bg-medium);
   }
 
@@ -4776,22 +4844,67 @@
     width: 26px;
     height: 26px;
     border-radius: 50%;
-    background: var(--primary-color);
-    color: white;
+    background: transparent;
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
     font-size: 0.65rem;
     font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .companion-filter-btn.companion-filter-selected .companion-filter-avatar {
+    background: var(--primary-color);
+    color: white;
   }
 
   .companion-filter-name {
     font-size: 0.8rem;
     font-weight: 500;
-    color: var(--dark-text);
+    color: var(--gray-dark);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    transition: color 0.15s;
+  }
+
+  .companion-filter-btn.companion-filter-selected .companion-filter-name {
+    color: var(--dark-text);
+    font-weight: 600;
+  }
+
+  .calendar-mobile-header {
+    display: none;
+  }
+
+  @media (max-width: 640px) {
+    .calendar-mobile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 0 var(--spacing-md);
+    }
+
+    .calendar-filter-btn {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-xs) var(--spacing-md);
+      border: 1px solid var(--glass-border-dark);
+      border-radius: var(--radius-md);
+      background: var(--glass-bg-medium);
+      color: var(--dark-text);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .calendar-filter-btn:hover {
+      background: var(--white);
+    }
   }
 
   /* Filter bottom sheet — mobile only */
@@ -5110,13 +5223,15 @@
   }
 
   .item-row.accommodation-gap {
-    background: var(--grey-200);
-    border-left: 3px dotted var(--grey-500);
-    padding-left: calc(var(--spacing-sm) - 1px);
+    background: var(--grey-100);
+    border: 2px dotted var(--grey-300);
+    border-radius: var(--radius-sm);
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm) calc(var(--spacing-sm) - 1px);
   }
 
   .item-row.accommodation-gap:hover {
-    background: var(--grey-300);
+    background: var(--grey-200);
   }
 
   .accommodation-gap-label {
