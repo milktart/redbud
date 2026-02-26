@@ -754,7 +754,7 @@
   }
 
   function togglePane(pane) {
-    activePane = activePane === pane ? null : pane;
+    activePane = (activePane === pane && !isMobileView) ? null : pane;
     if (pane === 'addNew' && activePane === 'addNew') {
       addNewView = 'menu'; // Reset to menu when opening
     }
@@ -7005,6 +7005,7 @@
       width: 48px;
       height: 48px;
       border-radius: var(--radius-md);
+      box-shadow: none;
     }
 
     .nav-square svg {

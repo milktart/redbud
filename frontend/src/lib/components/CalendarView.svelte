@@ -438,6 +438,13 @@
     overflow: hidden;
   }
 
+  @media (max-width: 640px) {
+    .calendar-view {
+      margin-left: calc(-1 * var(--spacing-md));
+      margin-right: calc(-1 * var(--spacing-md));
+    }
+  }
+
   .calendar-scroll {
     flex: 1;
     overflow-y: auto;

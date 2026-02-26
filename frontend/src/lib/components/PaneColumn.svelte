@@ -58,6 +58,7 @@
     .pane-column {
       flex: 1 1 auto;
       width: 100% !important;
+      --spacing-2xl: var(--spacing-md);
       padding-bottom: calc(var(--spacing-2xl) + 90px + env(safe-area-inset-bottom, 0px));
       scrollbar-width: none;
     }
