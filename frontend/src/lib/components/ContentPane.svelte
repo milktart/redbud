@@ -44,10 +44,10 @@
     .content-pane {
       top: var(--mobile-top, 2.5vh);
       bottom: calc(48px + var(--spacing-sm) * 2 + env(safe-area-inset-bottom, 0px));
-      left: var(--spacing-sm);
-      right: var(--spacing-sm);
+      left: 0;
+      right: 0;
       width: auto;
-      border-radius: var(--radius-xl) var(--radius-xl) var(--radius-md) var(--radius-md);
+      border-radius: 0;
     }
   }
 </style>

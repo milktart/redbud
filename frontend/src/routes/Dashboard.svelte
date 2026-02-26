@@ -5229,6 +5229,25 @@
     height: 100dvh;
   }
 
+  @media (max-width: 640px) {
+    .dashboard-root::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 180px 140px at 15% 20%, #1a8fc0 0%, transparent 70%),
+        radial-gradient(ellipse 220px 160px at 75% 10%, #d4780a 0%, transparent 70%),
+        radial-gradient(ellipse 150px 200px at 85% 45%, #1060a8 0%, transparent 70%),
+        radial-gradient(ellipse 200px 120px at 30% 60%, #b85c10 0%, transparent 70%),
+        radial-gradient(ellipse 160px 180px at 60% 78%, #c87c10 0%, transparent 70%),
+        radial-gradient(ellipse 130px 150px at 10% 88%, #0a8fcc 0%, transparent 70%),
+        radial-gradient(ellipse 190px 130px at 50% 42%, #0e70c0 0%, transparent 70%),
+        radial-gradient(ellipse 140px 170px at 90% 82%, #d08820 0%, transparent 70%);
+      filter: blur(30px);
+    }
+  }
+
   .map-container {
     position: absolute;
     inset: 0;
