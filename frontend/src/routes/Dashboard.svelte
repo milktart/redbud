@@ -3557,14 +3557,24 @@
         </div>
         <form class="add-form" on:submit={handleCreateItem}>
           <div class="form-group">
-            <label for="item-type">Item Type</label>
-            <select id="item-type" bind:value={itemForm.itemType} on:change={() => { if (itemForm.itemType === 'hotel') { itemForm.checkInTime = '14:00'; itemForm.checkOutTime = '11:00'; } }}>
-              <option value="flight">Flight</option>
-              <option value="hotel">Hotel</option>
-              <option value="transportation">Transportation</option>
-              <option value="event">Event</option>
-              <option value="car_rental">Car Rental</option>
-            </select>
+            <label>Item Type</label>
+            <div class="type-filter-strip">
+              <button type="button" class="type-filter-btn" class:type-filter-off={itemForm.itemType !== 'flight'} style="--filter-color: #10b981" on:click={() => { itemForm.itemType = 'flight'; }} title="Flight">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>
+              </button>
+              <button type="button" class="type-filter-btn" class:type-filter-off={itemForm.itemType !== 'hotel'} style="--filter-color: #f59e0b" on:click={() => { itemForm.itemType = 'hotel'; itemForm.checkInTime = '14:00'; itemForm.checkOutTime = '11:00'; }} title="Hotel">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3m12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9a4 4 0 0 0-4-4"/></svg>
+              </button>
+              <button type="button" class="type-filter-btn" class:type-filter-off={itemForm.itemType !== 'transportation'} style="--filter-color: #8b5cf6" on:click={() => { itemForm.itemType = 'transportation'; }} title="Transportation">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4zm3.5 1a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M6 10V6h12v4z"/></svg>
+              </button>
+              <button type="button" class="type-filter-btn" class:type-filter-off={itemForm.itemType !== 'car_rental'} style="--filter-color: #ec4899" on:click={() => { itemForm.itemType = 'car_rental'; }} title="Car Rental">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-8zM6.5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m11 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M5 11l1.5-4.5h11L19 11z"/></svg>
+              </button>
+              <button type="button" class="type-filter-btn" class:type-filter-off={itemForm.itemType !== 'event'} style="--filter-color: #06b6d4" on:click={() => { itemForm.itemType = 'event'; }} title="Event">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5zM16 1v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1zm3 18H5V8h14z"/></svg>
+              </button>
+            </div>
           </div>
 
           <div class="form-row">
@@ -4807,6 +4817,10 @@
     width: 100%;
   }
 
+  .add-form .type-filter-strip .type-filter-btn {
+    max-width: none;
+  }
+
   .type-filter-btn {
     display: flex;
     align-items: center;
@@ -5282,7 +5296,7 @@
     align-items: center;
     gap: var(--spacing-sm);
     padding: var(--spacing-xs) var(--spacing-sm);
-    margin-left: var(--spacing-sm);
+    margin: auto var(--spacing-sm);
     border-left: 2px solid var(--primary-color);
     transition: background var(--transition-fast);
     cursor: pointer;
