@@ -532,6 +532,7 @@
     top: 1px;
     left: 2px;
     font-size: 0.65rem;
+    letter-spacing: -0.1em;
     font-weight: 500;
     color: var(--gray-dark);
     line-height: 1;
