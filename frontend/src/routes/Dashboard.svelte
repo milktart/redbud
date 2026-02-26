@@ -697,7 +697,9 @@
   }
 
   function timeInput(node) {
+    let processing = false;
     function handleInput(e) {
+      if (processing) return;
       // Only process if the change is an insertion (not deletion/selection)
       const input = e.target;
       let val = input.value.replace(/[^0-9]/g, ''); // strip non-digits
@@ -716,9 +718,13 @@
         if (m > 59) val = val.slice(0, 3) + '59';
       }
 
-      input.value = val;
-      // Dispatch an input event so bind:value picks up the new value
-      input.dispatchEvent(new Event('input', { bubbles: true }));
+      if (input.value !== val) {
+        processing = true;
+        input.value = val;
+        // Dispatch an input event so bind:value picks up the new value
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        processing = false;
+      }
     }
 
     // Use keydown to intercept and block non-numeric keys cleanly
@@ -740,14 +746,18 @@
   }
 
   function onItemFlightNumberInput(e) {
-    itemForm.flightNumber = e.target.value;
+    const upper = e.target.value.toUpperCase();
+    if (e.target.value !== upper) e.target.value = upper;
+    itemForm.flightNumber = upper;
     const looked = lookupAirline(itemForm.flightNumber);
     itemForm.airline = looked;
     itemForm = itemForm; // trigger reactivity
   }
 
   function onEditFlightNumberInput(e) {
-    editForm.flightNumber = e.target.value;
+    const upper = e.target.value.toUpperCase();
+    if (e.target.value !== upper) e.target.value = upper;
+    editForm.flightNumber = upper;
     const looked = lookupAirline(editForm.flightNumber);
     editForm.airline = looked;
     editForm = editForm; // trigger reactivity
@@ -1681,7 +1691,7 @@
       case 'event':
         return formatDateTime(item.startDateTime, item.timezone);
       case 'car_rental':
-        return formatDateTime(item.pickupDateTime, item.timezone);
+        return formatDateTime(item.pickupDateTime, item.pickupTimezone);
       default:
         return '';
     }
@@ -1804,8 +1814,9 @@
         return item.originTimezone;
       case 'hotel':
       case 'event':
-      case 'car_rental':
         return item.timezone;
+      case 'car_rental':
+        return item.pickupTimezone;
       default:
         return null;
     }
@@ -2016,15 +2027,15 @@
         editForm.endDate = p.date;
         editForm.endTime = p.time;
       }
-      editForm.allDay = editForm.startTime === '00:00' && editForm.endTime === '24:00';
+      editForm.allDay = editForm.startTime === '00:00' && editForm.endTime === '23:59';
     } else if (item.itemType === 'car_rental') {
       if (item.pickupDateTime) {
-        const p = utcDateTimeParts(item.pickupDateTime, item.originTimezone);
+        const p = utcDateTimeParts(item.pickupDateTime, item.pickupTimezone);
         editForm.pickupDate = p.date;
         editForm.pickupTime = p.time;
       }
       if (item.dropoffDateTime) {
-        const p = utcDateTimeParts(item.dropoffDateTime, item.destinationTimezone);
+        const p = utcDateTimeParts(item.dropoffDateTime, item.dropoffTimezone);
         editForm.dropoffDate = p.date;
         editForm.dropoffTime = p.time;
       }
@@ -2616,7 +2627,7 @@
               </div>
 
               <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.9rem; font-weight:500;">
-                <input type="checkbox" bind:checked={editForm.allDay} on:change={() => { if (editForm.allDay) { editForm.startTime = '00:00'; editForm.endTime = '24:00'; } }} />
+                <input type="checkbox" bind:checked={editForm.allDay} on:change={() => { if (editForm.allDay) { editForm.startTime = '00:00'; editForm.endTime = '23:59'; } else { editForm.startTime = ''; editForm.endTime = ''; } }} />
                 All day event
               </label>
 
@@ -3079,7 +3090,7 @@
                   </div>
                 </div>
                 <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.9rem; font-weight:500;">
-                  <input type="checkbox" bind:checked={editForm.allDay} on:change={() => { if (editForm.allDay) { editForm.startTime = '00:00'; editForm.endTime = '24:00'; } }} />
+                  <input type="checkbox" bind:checked={editForm.allDay} on:change={() => { if (editForm.allDay) { editForm.startTime = '00:00'; editForm.endTime = '23:59'; } else { editForm.startTime = ''; editForm.endTime = ''; } }} />
                   All day event
                 </label>
                 {#if !editForm.allDay}
@@ -3789,7 +3800,7 @@
             </div>
 
             <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.9rem; font-weight:500;">
-              <input type="checkbox" bind:checked={itemForm.allDay} on:change={() => { if (itemForm.allDay) { itemForm.startTime = '00:00'; itemForm.endTime = '24:00'; } }} />
+              <input type="checkbox" bind:checked={itemForm.allDay} on:change={() => { if (itemForm.allDay) { itemForm.startTime = '00:00'; itemForm.endTime = '23:59'; } else { itemForm.startTime = ''; itemForm.endTime = ''; } }} />
               All day event
             </label>
 

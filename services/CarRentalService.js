@@ -5,7 +5,7 @@
 
 const TravelItemService = require('./TravelItemService');
 const logger = require('../utils/logger');
-const geocodingService = require('./geocodingService');
+const airportService = require('./airportService');
 
 class CarRentalService extends TravelItemService {
   constructor(CarRental) {
@@ -20,11 +20,11 @@ class CarRentalService extends TravelItemService {
     try {
       return await this.prepareItemData(data, {
         datePairs: ['pickup', 'dropoff'],
-        timezoneFields: ['pickupLocationTimezone', 'dropoffLocationTimezone'],
+        timezoneFields: ['pickupTimezone', 'dropoffTimezone'],
         locationFields: ['pickupLocation', 'dropoffLocation'],
-        geocodeService: geocodingService,
+        geocodeService: airportService,
         dateTimeFields: ['pickupDateTime', 'dropoffDateTime'],
-        tzPairs: ['pickupLocationTimezone', 'dropoffLocationTimezone'],
+        tzPairs: ['pickupTimezone', 'dropoffTimezone'],
       });
     } catch (error) {
       logger.error('Error preparing car rental data:', error);
