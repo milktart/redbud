@@ -1401,6 +1401,35 @@
     return nights > 0 ? nights : null;
   }
 
+  function getItemPrimaryDate(form) {
+    if (!form) return null;
+    switch (form.itemType) {
+      case 'flight':
+      case 'transportation':
+        return form.departureDate || null;
+      case 'hotel':
+        return form.checkInDate || null;
+      case 'event':
+        return form.startDate || null;
+      case 'car_rental':
+        return form.pickupDate || null;
+      default:
+        return null;
+    }
+  }
+
+  function filterTripsByItemDate(itemDate, currentTripId) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const itemIsPast = itemDate ? parseDateOnly(itemDate) < today : false;
+    return trips.filter(trip => {
+      if (currentTripId && trip.id === currentTripId) return true;
+      const tripEnd = trip.returnDate ? parseDateOnly(trip.returnDate) : parseDateOnly(trip.departureDate);
+      const tripIsPast = tripEnd < today;
+      return itemIsPast ? tripIsPast : !tripIsPast;
+    });
+  }
+
   function getMonthYear(date) {
     if (!date) return '';
     const d = new Date(date);
@@ -2249,7 +2278,7 @@
               {/if}
               {#if entry.type === 'trip'}
                 <!-- Trip with items -->
-                <div class="trip-card" class:selected={selectedTrip?.id === entry.trip.id} class:tentative={entry.trip.isConfirmed === false}>
+                <div class="trip-card" class:selected={selectedTrip?.id === entry.trip.id} class:tentative={entry.trip.isConfirmed === false} class:active={(() => { const now = new Date(); const start = new Date(entry.trip.departureDate); const end = entry.trip.returnDate ? new Date(entry.trip.returnDate) : null; return start <= now && end && end >= now; })()}>
                   <div class="trip-header" on:click={() => handleTripClick(entry.trip)} role="button" tabindex="0" on:keydown={(e) => e.key === 'Enter' && handleTripClick(entry.trip)}>
                     <div class="trip-header-top">
                       <span class="trip-name">{entry.trip.name}</span>
@@ -2380,8 +2409,8 @@
                 <label for="edit-item-trip">Trip (Optional)</label>
                 <select id="edit-item-trip" bind:value={editForm.tripId}>
                   <option value="">None (standalone item)</option>
-                  {#each trips as trip}
-                    <option value={trip.id}>{trip.name}</option>
+                  {#each filterTripsByItemDate(getItemPrimaryDate(editForm), editForm.tripId) as trip}
+                    <option value={trip.id}>{trip.purpose === 'business' ? '※ ' : ''}{trip.name}</option>
                   {/each}
                 </select>
               </div>
@@ -2868,8 +2897,8 @@
                   <label for="m-edit-item-trip">Trip (Optional)</label>
                   <select id="m-edit-item-trip" bind:value={editForm.tripId}>
                     <option value="">None (standalone item)</option>
-                    {#each trips as trip}
-                      <option value={trip.id}>{trip.name}</option>
+                    {#each filterTripsByItemDate(getItemPrimaryDate(editForm), editForm.tripId) as trip}
+                      <option value={trip.id}>{trip.purpose === 'business' ? '※ ' : ''}{trip.name}</option>
                     {/each}
                   </select>
                 </div>
@@ -3543,8 +3572,8 @@
               <label for="item-trip">Trip (Optional)</label>
               <select id="item-trip" bind:value={itemForm.tripId}>
                 <option value="">None (standalone item)</option>
-                {#each trips as trip}
-                  <option value={trip.id}>{trip.name}</option>
+                {#each filterTripsByItemDate(getItemPrimaryDate(itemForm), itemForm.tripId) as trip}
+                  <option value={trip.id}>{trip.purpose === 'business' ? '※ ' : ''}{trip.name}</option>
                 {/each}
               </select>
             </div>
@@ -5131,6 +5160,11 @@
       rgba(0, 0, 0, 0.04) 6px,
       rgba(0, 0, 0, 0.04) 8px
     );
+  }
+
+  .trip-card.active {
+    background: var(--green-50);
+    border-color: var(--green-400);
   }
 
   .trip-name {
