@@ -519,6 +519,9 @@
 
   // Calendar filter state
   let showCalendarFilterSheet = false;
+
+  // Settings bottom sheet (mobile only)
+  let showSettingsSheet = false;
   let visibleItemTypes = {
     trip: true,
     flight: true,
@@ -4103,14 +4106,14 @@
   {/if}
 
   {#if activePane === 'settings'}
-    <ContentPane columns={activeSettingsSection === 'data' && importData ? 4 : activeSettingsSection === 'companions' ? ((addingCompanion || editingCompanion) ? 4 : 3) : activeSettingsSection ? 2 : 1}>
+    <ContentPane columns={isMobileView ? 1 : activeSettingsSection === 'data' && importData ? 4 : activeSettingsSection === 'companions' ? ((addingCompanion || editingCompanion) ? 4 : 3) : activeSettingsSection ? 2 : 1}>
       <PaneColumn span={1}>
         <h3 class="pane-title">Settings</h3>
 
         <div class="settings-menu">
           <div class="settings-section">
             <h4 class="settings-section-title">Account</h4>
-            <button class="settings-option" class:active={activeSettingsSection === 'profile'} on:click={() => activeSettingsSection = 'profile'}>
+            <button class="settings-option" class:active={activeSettingsSection === 'profile'} on:click={() => { activeSettingsSection = 'profile'; if (isMobileView) showSettingsSheet = true; }}>
               <div class="settings-option-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -4126,7 +4129,7 @@
               </svg>
             </button>
 
-            <button class="settings-option" class:active={activeSettingsSection === 'security'} on:click={() => activeSettingsSection = 'security'}>
+            <button class="settings-option" class:active={activeSettingsSection === 'security'} on:click={() => { activeSettingsSection = 'security'; if (isMobileView) showSettingsSheet = true; }}>
               <div class="settings-option-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
@@ -4145,7 +4148,7 @@
 
           <div class="settings-section">
             <h4 class="settings-section-title">Social</h4>
-            <button class="settings-option" class:active={activeSettingsSection === 'companions'} on:click={() => activeSettingsSection = 'companions'}>
+            <button class="settings-option" class:active={activeSettingsSection === 'companions'} on:click={() => { activeSettingsSection = 'companions'; if (isMobileView) showSettingsSheet = true; }}>
               <div class="settings-option-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -4166,7 +4169,7 @@
 
           <div class="settings-section">
             <h4 class="settings-section-title">Data</h4>
-            <button class="settings-option" class:active={activeSettingsSection === 'data'} on:click={() => { activeSettingsSection = 'data'; importResult = null; }}>
+            <button class="settings-option" class:active={activeSettingsSection === 'data'} on:click={() => { activeSettingsSection = 'data'; importResult = null; if (isMobileView) showSettingsSheet = true; }}>
               <div class="settings-option-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <ellipse cx="12" cy="5" rx="9" ry="3"/>
@@ -4202,7 +4205,7 @@
         </div>
       </PaneColumn>
 
-      {#if activeSettingsSection === 'companions'}
+      {#if activeSettingsSection === 'companions' && !isMobileView}
         <PaneColumn span={2} divider={true}>
           <div class="edit-header">
             <h3 class="pane-title">Travel Companions</h3>
@@ -4419,7 +4422,7 @@
           </PaneColumn>
         {/if}
 
-      {:else if activeSettingsSection === 'data'}
+      {:else if activeSettingsSection === 'data' && !isMobileView}
         <PaneColumn span={1} divider={true}>
           <div class="edit-header">
             <h3 class="pane-title">Manage Data</h3>
@@ -4654,7 +4657,7 @@
           </PaneColumn>
         {/if}
 
-      {:else if activeSettingsSection}
+      {:else if activeSettingsSection && !isMobileView}
         <PaneColumn span={1} divider={true}>
           <div class="edit-header">
             <h3 class="pane-title">
@@ -4726,6 +4729,488 @@
         </PaneColumn>
       {/if}
     </ContentPane>
+
+    {#if isMobileView && showSettingsSheet}
+      <div class="edit-sheet-backdrop" on:click={() => { showSettingsSheet = false; activeSettingsSection = null; closeEditCompanion(); addingCompanion = false; addCompanionEmail = ''; addCompanionError = ''; importData = null; importCompanions = []; importSelections = {}; importResult = null; importFileError = ''; }}></div>
+      <div class="edit-sheet edit-sheet-open">
+        <div class="filter-sheet-handle"></div>
+        <div class="edit-sheet-scroll">
+          <div class="filter-sheet-header">
+            <h3 class="pane-title" style="margin:0">
+              {#if activeSettingsSection === 'profile'}Profile
+              {:else if activeSettingsSection === 'security'}Password & Security
+              {:else if activeSettingsSection === 'companions'}
+                {#if addingCompanion}Add Companion
+                {:else if editingCompanion}Edit Companion
+                {:else}Travel Companions
+                {/if}
+              {:else if activeSettingsSection === 'data'}Manage Data
+              {/if}
+            </h3>
+            <button class="close-btn" on:click={() => { showSettingsSheet = false; activeSettingsSection = null; closeEditCompanion(); addingCompanion = false; addCompanionEmail = ''; addCompanionError = ''; importData = null; importCompanions = []; importSelections = {}; importResult = null; importFileError = ''; }}>✕</button>
+          </div>
+
+          {#if activeSettingsSection === 'profile'}
+            <form class="edit-form" on:submit={handleSaveProfile}>
+              <div class="form-row">
+                <div class="form-group form-group--60">
+                  <label for="settings-sheet-first-name">First Name</label>
+                  <input type="text" id="settings-sheet-first-name" bind:value={profileForm.firstName} placeholder="Your first name" />
+                </div>
+                <div class="form-group form-group--40">
+                  <label for="settings-sheet-last-name">Last Initial</label>
+                  <input type="text" id="settings-sheet-last-name" bind:value={profileForm.lastName} placeholder="e.g. S" maxlength="1" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="settings-sheet-email">Email</label>
+                <input type="email" id="settings-sheet-email" bind:value={profileForm.email} placeholder="you@example.com" disabled />
+              </div>
+              <div class="form-group">
+                <label for="settings-sheet-phone">Phone Number</label>
+                <PhoneInput
+                  id="settings-sheet-phone"
+                  value={profileForm.phone}
+                  onChangeNumber={(num) => { profileForm.phone = num; }}
+                />
+              </div>
+              {#if profileSaveError}
+                <p class="companions-error">{profileSaveError}</p>
+              {/if}
+              {#if profileSaveSuccess}
+                <p class="profile-save-success">Profile saved.</p>
+              {/if}
+              <div class="form-actions">
+                <button type="button" class="btn-secondary" on:click={() => { showSettingsSheet = false; activeSettingsSection = null; }}>Cancel</button>
+                <button type="submit" class="btn-primary">Update</button>
+              </div>
+            </form>
+
+          {:else if activeSettingsSection === 'security'}
+            <form class="edit-form">
+              <div class="form-group">
+                <label for="settings-sheet-current-password">Current Password</label>
+                <input type="password" id="settings-sheet-current-password" placeholder="Enter current password" />
+              </div>
+              <div class="form-group">
+                <label for="settings-sheet-new-password">New Password</label>
+                <input type="password" id="settings-sheet-new-password" placeholder="Enter new password" />
+              </div>
+              <div class="form-group">
+                <label for="settings-sheet-confirm-password">Confirm New Password</label>
+                <input type="password" id="settings-sheet-confirm-password" placeholder="Confirm new password" />
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn-secondary" on:click={() => { showSettingsSheet = false; activeSettingsSection = null; }}>Cancel</button>
+                <button type="submit" class="btn-primary">Update</button>
+              </div>
+            </form>
+
+          {:else if activeSettingsSection === 'companions'}
+            {#if addingCompanion}
+              <form class="edit-form companion-add-form" on:submit|preventDefault={handleAddCompanion}>
+                <div class="form-group">
+                  <label for="companion-sheet-email">Email or Phone Number</label>
+                  <div class="companions-email-field">
+                    <input
+                      type="text"
+                      id="companion-sheet-email"
+                      bind:value={addCompanionEmail}
+                      on:input={onCompanionIdentifierInput}
+                      on:blur={dismissCompanionSuggestions}
+                      placeholder="Name, email, or phone"
+                      autocomplete="off"
+                      autocorrect="off"
+                      autocapitalize="off"
+                      spellcheck="false"
+                      required
+                    />
+                    {#if companionLookupLoading}
+                      <span class="companions-lookup-spinner">…</span>
+                    {/if}
+                    {#if companionSuggestions.length > 0}
+                      <ul class="attendee-suggestions">
+                        {#each companionSuggestions as u (u.id)}
+                          <li>
+                            <button type="button" class="attendee-suggestion-item" on:mousedown={() => selectCompanionSuggestion(u)}>
+                              <span class="suggestion-name">{u.firstName || ''} {u.lastName || ''}</span>
+                              <span class="suggestion-email">{u.email || u.phone || ''}</span>
+                            </button>
+                          </li>
+                        {/each}
+                      </ul>
+                    {/if}
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group form-group--60">
+                    <label for="companion-sheet-first-name">First Name</label>
+                    <input type="text" id="companion-sheet-first-name" bind:value={addCompanionFirstName} placeholder="First name" required />
+                  </div>
+                  <div class="form-group form-group--40">
+                    <label for="companion-sheet-last-initial">Last Initial</label>
+                    <input type="text" id="companion-sheet-last-initial" bind:value={addCompanionLastName} placeholder="e.g. S" maxlength="1" required />
+                  </div>
+                </div>
+                {#if addCompanionError}
+                  <p class="companions-error">{addCompanionError}</p>
+                {/if}
+                <div class="form-actions">
+                  <button type="button" class="btn-secondary" on:click={() => { addingCompanion = false; addCompanionEmail = ''; addCompanionFirstName = ''; addCompanionLastName = ''; addCompanionError = ''; }}>Cancel</button>
+                  <button type="submit" class="btn-primary">Add</button>
+                </div>
+              </form>
+
+            {:else if editingCompanion}
+              <div class="companion-edit-identity">
+                <div class="companion-avatar companion-avatar-lg">
+                  {editingCompanion.companionUser.firstName[0]}{editingCompanion.companionUser.lastName[0]}
+                </div>
+                <div class="companion-info">
+                  <span class="companion-name">{editingCompanion.companionUser.firstName} {editingCompanion.companionUser.lastName}.</span>
+                  <span class="companion-email">{editingCompanion.companionUser.email ?? editingCompanion.companionUser.phone ?? ''}</span>
+                </div>
+              </div>
+              <form class="edit-form" on:submit|preventDefault={handleSaveEditCompanion}>
+                <div class="form-group">
+                  <label for="edit-companion-sheet-permission">My permission level for them</label>
+                  <select id="edit-companion-sheet-permission" bind:value={editCompanionPermission} class="edit-companion-select">
+                    <option value="none">No access — they cannot see my travel</option>
+                    <option value="view">Can view — they can see my travel</option>
+                    <option value="manage_all">Can manage — they can edit my travel</option>
+                  </select>
+                </div>
+                {#if editCompanionError}
+                  <p class="companions-error">{editCompanionError}</p>
+                {/if}
+                <div class="form-actions">
+                  <button type="button" class="btn-secondary" on:click={closeEditCompanion}>Cancel</button>
+                  <button type="submit" class="btn-primary">Update</button>
+                </div>
+                <div class="form-actions-remove">
+                  <button type="button" class="btn-danger-outline" on:click={() => handleRemoveCompanion(editingCompanion.companionUser.id)}>Remove</button>
+                </div>
+              </form>
+
+            {:else}
+              {#if companionsLoading}
+                <p class="companions-empty">Loading...</p>
+              {:else if companions.length === 0}
+                <p class="companions-empty">No companions yet.
+                  <button class="companions-add-inline-btn" on:click={() => { addingCompanion = true; closeEditCompanion(); }}>+ Add one</button>
+                </p>
+              {:else}
+                <div class="companions-table-wrapper">
+                  <table class="companions-table">
+                    <thead>
+                      <tr>
+                        <th class="col-identity">Name / Contact</th>
+                        <th class="col-perm" title="I share my travel with them">
+                          <span class="perm-header-cell">
+                            <span class="perm-arrow perm-arrow-out">→</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="perm-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                          </span>
+                        </th>
+                        <th class="col-perm" title="They can manage my travel">
+                          <span class="perm-header-cell">
+                            <span class="perm-arrow perm-arrow-out">→</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="perm-icon"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </span>
+                        </th>
+                        <th class="col-perm col-perm-divider" title="They share their travel with me">
+                          <span class="perm-header-cell">
+                            <span class="perm-arrow perm-arrow-in">←</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="perm-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                          </span>
+                        </th>
+                        <th class="col-perm" title="I can manage their travel">
+                          <span class="perm-header-cell">
+                            <span class="perm-arrow perm-arrow-in">←</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="perm-icon"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </span>
+                        </th>
+                        <th class="col-actions"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {#each companions as companion}
+                        <tr class="companion-row" class:selected={editingCompanion?.id === companion.id}>
+                          <td class="col-identity">
+                            <div class="companion-identity">
+                              <div class="companion-avatar">
+                                {companion.companionUser.firstName[0]}{companion.companionUser.lastName[0]}
+                              </div>
+                              <div class="companion-info">
+                                <span class="companion-name">{companion.companionUser.firstName} {companion.companionUser.lastName}.</span>
+                                <span class="companion-email">{companion.companionUser.email ?? companion.companionUser.phone ?? ''}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="col-perm">
+                            <span class="perm-dot" class:active={companion.permissionLevel === 'view' || companion.permissionLevel === 'manage_all'} title={companion.permissionLevel === 'view' || companion.permissionLevel === 'manage_all' ? 'Yes' : 'No'}></span>
+                          </td>
+                          <td class="col-perm">
+                            <span class="perm-dot" class:active={companion.permissionLevel === 'manage_all'} title={companion.permissionLevel === 'manage_all' ? 'Yes' : 'No'}></span>
+                          </td>
+                          <td class="col-perm col-perm-divider">
+                            <span class="perm-dot" class:active={companion.reversePermissionLevel === 'view' || companion.reversePermissionLevel === 'manage_all'} title={companion.reversePermissionLevel === 'view' || companion.reversePermissionLevel === 'manage_all' ? 'Yes' : 'No'}></span>
+                          </td>
+                          <td class="col-perm">
+                            <span class="perm-dot" class:active={companion.reversePermissionLevel === 'manage_all'} title={companion.reversePermissionLevel === 'manage_all' ? 'Yes' : 'No'}></span>
+                          </td>
+                          <td class="col-actions">
+                            <button
+                              class="companion-edit-btn"
+                              class:active={editingCompanion?.id === companion.id}
+                              on:click={() => openEditCompanion(companion)}
+                              aria-label="Edit companion"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                              </svg>
+                            </button>
+                          </td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colspan="6" class="companions-table-footer">
+                          <button class="companions-add-inline-btn" on:click={() => { addingCompanion = !addingCompanion; closeEditCompanion(); addCompanionError = ''; addCompanionEmail = ''; }}>
+                            {addingCompanion ? '− Cancel' : '+ Add New'}
+                          </button>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              {/if}
+            {/if}
+
+          {:else if activeSettingsSection === 'data'}
+            <div class="manage-data-section">
+              <h4 class="manage-data-section-title">Export Data</h4>
+              <p class="settings-export-description">Download a copy of all your travel data including trips, flights, hotels, and other items.</p>
+              <div class="form-group">
+                <button type="button" class="btn-primary" on:click={handleExportData}>Download</button>
+              </div>
+            </div>
+
+            <div class="manage-data-section">
+              <h4 class="manage-data-section-title">Import Data</h4>
+              <p class="settings-export-description">Select a previously exported JSON file to import your trips and items.</p>
+              <div class="form-group">
+                <input
+                  type="file"
+                  id="import-file-input-sheet"
+                  accept=".json,application/json"
+                  style="display:none"
+                  on:change={handleImportFileChange}
+                />
+                <div
+                  class="import-drop-zone"
+                  class:import-drop-zone--active={importDragOver}
+                  class:import-drop-zone--disabled={importLoading}
+                  role="button"
+                  tabindex="0"
+                  on:click={() => !importLoading && document.getElementById('import-file-input-sheet').click()}
+                  on:keydown={(e) => e.key === 'Enter' && !importLoading && document.getElementById('import-file-input-sheet').click()}
+                  on:dragover={(e) => { e.preventDefault(); importDragOver = true; }}
+                  on:dragleave={() => importDragOver = false}
+                  on:drop={handleImportDrop}
+                >
+                  <svg class="import-drop-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                  <span class="import-drop-label">
+                    {importLoading ? 'Loading...' : 'Drop file here or click to choose'}
+                  </span>
+                </div>
+              </div>
+
+              {#if importFileError}
+                <p class="companions-error">{importFileError}</p>
+              {/if}
+
+              {#if importData && importSummary}
+                <div class="import-summary">
+                  <p class="import-summary-text">
+                    <strong>{importSummary.trips}</strong> trip{importSummary.trips !== 1 ? 's' : ''},
+                    <strong>{importSummary.items}</strong> item{importSummary.items !== 1 ? 's' : ''}
+                    {#if importSummary.vouchers > 0}, <strong>{importSummary.vouchers}</strong> voucher{importSummary.vouchers !== 1 ? 's' : ''}{/if}
+                    found
+                    {#if importSummary.dups > 0}
+                      — <span class="import-dup-count">{importSummary.dups} possible duplicate{importSummary.dups !== 1 ? 's' : ''} detected</span>
+                    {/if}
+                  </p>
+                  <p class="import-selected-count">{importSelectedCount} selected for import</p>
+                </div>
+
+                {#if importResult}
+                  <div class="import-result" class:import-result--success={importResult.imported > 0} class:import-result--neutral={importResult.imported === 0}>
+                    <p>Imported <strong>{importResult.imported}</strong>, skipped <strong>{importResult.skipped}</strong>.</p>
+                    {#if importResult.errors?.length > 0}
+                      <p class="import-result-errors">{importResult.errors.length} error{importResult.errors.length !== 1 ? 's' : ''} occurred.</p>
+                    {/if}
+                  </div>
+                {/if}
+
+                <div class="import-review-header">
+                  <h3 class="pane-title" style="margin:0">Review</h3>
+                  <div class="import-select-controls">
+                    <button type="button" class="import-select-btn" on:click={() => {
+                      const next = {};
+                      for (const k of Object.keys(importSelections)) next[k] = true;
+                      importSelections = next;
+                    }}>Select All</button>
+                    <button type="button" class="import-select-btn" on:click={() => {
+                      const next = {};
+                      for (const k of Object.keys(importSelections)) next[k] = false;
+                      importSelections = next;
+                    }}>Deselect All</button>
+                  </div>
+                </div>
+
+                <div class="import-review-list">
+                  {#each [...importData.trips].sort((a, b) => (a.departureDate ?? '').localeCompare(b.departureDate ?? '')) as trip (trip._importIndex)}
+                    {@const tripKey = `trip:${trip._importIndex}`}
+                    {@const tripItems = [
+                      ...(trip.flights ?? []).map(i => ({ ...i, _itemType: 'flights', _label: 'Flight' })),
+                      ...(trip.hotels ?? []).map(i => ({ ...i, _itemType: 'hotels', _label: 'Hotel' })),
+                      ...(trip.transportation ?? []).map(i => ({ ...i, _itemType: 'transportation', _label: 'Transport' })),
+                      ...(trip.carRentals ?? []).map(i => ({ ...i, _itemType: 'carRentals', _label: 'Car Rental' })),
+                      ...(trip.events ?? []).map(i => ({ ...i, _itemType: 'events', _label: 'Event' })),
+                    ].sort((a, b) => {
+                      const da = a.departureDateTime ?? a.checkInDateTime ?? a.startDateTime ?? a.pickupDateTime ?? '';
+                      const db = b.departureDateTime ?? b.checkInDateTime ?? b.startDateTime ?? b.pickupDateTime ?? '';
+                      return da.localeCompare(db);
+                    })}
+                    <div class="import-trip-block">
+                      <label class="import-row import-row--trip">
+                        <input type="checkbox" checked={importSelections[tripKey]} on:change={(e) => {
+                          const next = { ...importSelections, [tripKey]: e.target.checked };
+                          for (const i of tripItems) next[`${i._itemType}:${trip._importIndex}:${i._importIndex}`] = e.target.checked;
+                          importSelections = next;
+                        }} />
+                        <span class="import-row-name">{trip.name || 'Unnamed Trip'}</span>
+                        {#if trip.departureDate}
+                          <span class="import-row-meta">{trip.departureDate}{trip.returnDate ? ` → ${trip.returnDate}` : ''}</span>
+                        {/if}
+                        {#if trip.isDuplicate}
+                          <span class="import-dup-badge">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="import-dup-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            Possible duplicate
+                          </span>
+                        {/if}
+                      </label>
+                      {#each tripItems as item (item._importIndex + item._itemType)}
+                        {@const itemKey = `${item._itemType}:${trip._importIndex}:${item._importIndex}`}
+                        {@const itemDate = (item.departureDateTime ?? item.checkInDateTime ?? item.startDateTime ?? item.pickupDateTime)?.slice(0, 10)}
+                        <label class="import-row import-row--item">
+                          <input type="checkbox" bind:checked={importSelections[itemKey]} />
+                          <span class="import-row-type-badge">{item._label}</span>
+                          <span class="import-row-name">
+                            {item.flightNumber ?? item.hotelName ?? item.name ?? item.pickupLocation ?? item.method ?? 'Item'}
+                            {#if (item._itemType === 'flights' || item._itemType === 'transportation') && (item.origin || item.destination)}
+                              <span class="import-row-route">{item.origin ?? '?'} → {item.destination ?? '?'}</span>
+                            {/if}
+                          </span>
+                          {#if itemDate}
+                            <span class="import-row-meta">{itemDate}</span>
+                          {/if}
+                          {#if item.isDuplicate}
+                            <span class="import-dup-badge">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="import-dup-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                              Possible duplicate
+                            </span>
+                          {/if}
+                        </label>
+                      {/each}
+                    </div>
+                  {/each}
+
+                  {#if importData.standalone}
+                    {@const standaloneTypeMap = [['flights', 'Flight'], ['hotels', 'Hotel'], ['transportation', 'Transport'], ['carRentals', 'Car Rental'], ['events', 'Event']]}
+                    {@const allStandaloneItems = standaloneTypeMap.flatMap(([type, label]) =>
+                      (importData.standalone[type] ?? []).map(i => ({ ...i, _itemType: type, _label: label }))
+                    ).sort((a, b) => {
+                      const da = a.departureDateTime ?? a.checkInDateTime ?? a.startDateTime ?? a.pickupDateTime ?? '';
+                      const db = b.departureDateTime ?? b.checkInDateTime ?? b.startDateTime ?? b.pickupDateTime ?? '';
+                      return da.localeCompare(db);
+                    })}
+                    {#if allStandaloneItems.length > 0}
+                      <div class="import-trip-block">
+                        <div class="import-row import-row--section-header">Standalone Items</div>
+                        {#each allStandaloneItems as item (item._importIndex + item._itemType)}
+                          {@const itemKey = `standalone:${item._itemType}:${item._importIndex}`}
+                          {@const itemDate = (item.departureDateTime ?? item.checkInDateTime ?? item.startDateTime ?? item.pickupDateTime)?.slice(0, 10)}
+                          <label class="import-row import-row--item">
+                            <input type="checkbox" bind:checked={importSelections[itemKey]} />
+                            <span class="import-row-type-badge">{item._label}</span>
+                            <span class="import-row-name">
+                              {item.flightNumber ?? item.hotelName ?? item.name ?? item.pickupLocation ?? item.method ?? 'Item'}
+                              {#if (item._itemType === 'flights' || item._itemType === 'transportation') && (item.origin || item.destination)}
+                                <span class="import-row-route">{item.origin ?? '?'} → {item.destination ?? '?'}</span>
+                              {/if}
+                            </span>
+                            {#if itemDate}
+                              <span class="import-row-meta">{itemDate}</span>
+                            {/if}
+                            {#if item.isDuplicate}
+                              <span class="import-dup-badge">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="import-dup-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                Possible duplicate
+                              </span>
+                            {/if}
+                          </label>
+                        {/each}
+                      </div>
+                    {/if}
+                  {/if}
+
+                  {#if importData.vouchers?.length > 0}
+                    <div class="import-trip-block">
+                      <div class="import-row import-row--section-header">Vouchers</div>
+                      {#each importData.vouchers as v (v._importIndex)}
+                        {@const vKey = `voucher:${v._importIndex}`}
+                        <label class="import-row import-row--item">
+                          <input type="checkbox" bind:checked={importSelections[vKey]} />
+                          <span class="import-row-type-badge">{v.type}</span>
+                          <span class="import-row-name">{v.issuer} — {v.voucherNumber}</span>
+                          {#if v.expirationDate}
+                            <span class="import-row-meta">{v.expirationDate.slice(0, 10)}</span>
+                          {/if}
+                          {#if v.isDuplicate}
+                            <span class="import-dup-badge">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="import-dup-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                              Possible duplicate
+                            </span>
+                          {/if}
+                        </label>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+
+                <div class="form-actions">
+                  <button type="button" class="btn-secondary" on:click={() => { importData = null; importCompanions = []; importSelections = {}; importResult = null; importFileError = ''; }}>Clear</button>
+                  <button
+                    type="button"
+                    class="btn-primary"
+                    on:click={handleExecuteImport}
+                    disabled={importSubmitting || importSelectedCount === 0}
+                  >
+                    {importSubmitting ? 'Importing...' : 'Import Selected'}
+                  </button>
+                </div>
+              {/if}
+            </div>
+          {/if}
+
+        </div>
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -4815,6 +5300,7 @@
     flex-direction: row;
     gap: var(--spacing-xs);
     width: 100%;
+    justify-content: center;
   }
 
   .add-form .type-filter-strip .type-filter-btn {
@@ -5278,7 +5764,7 @@
     background: var(--grey-100);
     border: 2px dotted var(--grey-300);
     border-radius: var(--radius-sm);
-    margin-top: var(--spacing-sm);
+    margin: var(--spacing-sm) var(--spacing-sm) auto;
     padding: var(--spacing-sm) calc(var(--spacing-sm) - 1px);
   }
 
@@ -5296,7 +5782,7 @@
     align-items: center;
     gap: var(--spacing-sm);
     padding: var(--spacing-xs) var(--spacing-sm);
-    margin: auto var(--spacing-sm);
+    margin-left: var(--spacing-sm);
     border-left: 2px solid var(--primary-color);
     transition: background var(--transition-fast);
     cursor: pointer;
