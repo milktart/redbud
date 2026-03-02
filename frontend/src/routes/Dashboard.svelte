@@ -787,6 +787,12 @@
     activePane = 'addNew';
     addNewView = 'itemForm';
     resetAttendeeState();
+    const trip = trips.find(t => t.id === tripId);
+    if (trip?.attendees) {
+      pendingAttendees = trip.attendees
+        .filter(a => a.userId !== $user?.id && a.user?.email)
+        .map(a => ({ email: a.user.email, firstName: a.user.firstName || '', lastName: a.user.lastName || '' }));
+    }
     const checkInDate = gapStart ? new Date(gapStart).toISOString().slice(0, 10) : '';
     const checkOutDate = gapEnd ? new Date(gapEnd).toISOString().slice(0, 10) : '';
     itemForm = {
