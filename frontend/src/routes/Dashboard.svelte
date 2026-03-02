@@ -240,6 +240,7 @@
   let companions = [];
   let companionsLoading = false;
   let selectedCompanionIds = new Set();
+  let selectedFriendsCompanionIds = new Set();
   let addingCompanion = false;
   let addCompanionEmail = '';
   let addCompanionFirstName = '';
@@ -1872,8 +1873,9 @@
     return result;
   }
 
-  function getFriendsTimelineEntries() {
+  function getFriendsTimelineEntries(filterIds = null) {
     // Returns upcoming and in-progress trips/items from companions, sorted chronologically
+    // filterIds: optional Set of companion user IDs to restrict results to
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
@@ -1883,7 +1885,7 @@
     const allFriendTrips = [
       ...friendsTrips,
       ...trips.filter(t => t.isShared),
-    ];
+    ].filter(t => !filterIds || !filterIds.size || (t.user && filterIds.has(t.user.id)));
     const seenTripIds = new Set();
     for (const trip of allFriendTrips) {
       if (seenTripIds.has(trip.id)) continue;
@@ -1916,7 +1918,10 @@
     }
 
     // Add companion standalone items (upcoming and in-progress only)
-    for (const item of companionStandaloneItems) {
+    const filteredStandaloneItems = (!filterIds || !filterIds.size)
+      ? companionStandaloneItems
+      : companionStandaloneItems.filter(i => i.user && filterIds.has(i.user.id));
+    for (const item of filteredStandaloneItems) {
       const sortDt = getItemSortDateTime(item);
       const itemDate = sortDt ? new Date(sortDt) : null;
       if (itemDate) {
@@ -3315,12 +3320,43 @@
   {/if}
 
   {#if activePane === 'shared'}
-    <ContentPane columns={1} mobileTop="30vh">
-      <PaneColumn span={1}>
+    {@const sharingFriendsCompanions = companions.filter(c => c.reversePermissionLevel && c.reversePermissionLevel !== 'none')}
+    {@const showFriendsFilter = !isMobileView && sharingFriendsCompanions.length > 0}
+    <ContentPane columns={showFriendsFilter ? 2 : 1} mobileTop="30vh">
+      <!-- Filter column — desktop only, when there are sharing companions -->
+      {#if showFriendsFilter}
+        <PaneColumn span={1}>
+          <h3 class="pane-title">Filters</h3>
+          <h4 class="filter-section-label">Friends</h4>
+          <div class="companion-filter-list">
+            {#each sharingFriendsCompanions as c (c.companionUser.id)}
+              {@const uid = c.companionUser.id}
+              {@const selected = selectedFriendsCompanionIds.has(uid)}
+              {@const initials = ((c.companionUser.firstName?.[0] ?? '') + (c.companionUser.lastName?.[0] ?? '')).toUpperCase() || c.companionUser.email?.[0]?.toUpperCase() || '?'}
+              {@const name = ((c.companionUser.firstName ?? '') + ' ' + (c.companionUser.lastName ?? '')).trim() || c.companionUser.email}
+              <button
+                class="companion-filter-btn"
+                class:companion-filter-selected={selected}
+                title={name}
+                on:click={() => {
+                  const next = new Set(selectedFriendsCompanionIds);
+                  if (next.has(uid)) next.delete(uid); else next.add(uid);
+                  selectedFriendsCompanionIds = next;
+                }}
+              >
+                <span class="companion-filter-avatar">{initials}</span>
+                <span class="companion-filter-name">{name}</span>
+              </button>
+            {/each}
+          </div>
+        </PaneColumn>
+      {/if}
+
+      <PaneColumn span={1} divider={showFriendsFilter}>
         <h3 class="pane-title">Friends' Trips</h3>
 
-        {#key friendsTrips.length + trips.length + companionStandaloneItems.length}
-          {@const friendsEntries = getFriendsTimelineEntries()}
+        {#key friendsTrips.length + trips.length + companionStandaloneItems.length + selectedFriendsCompanionIds.size}
+          {@const friendsEntries = getFriendsTimelineEntries(selectedFriendsCompanionIds)}
           {#if friendsEntries.length === 0}
             <p class="pane-empty">No upcoming trips or items from friends.</p>
           {:else}
