@@ -3398,7 +3398,7 @@
             </button>
           </div>
         {:else}
-          <div class="calendar-mobile-header">
+          <div class="pane-title-row">
             <h3 class="pane-title" style="margin:0">Friends' Trips</h3>
             <button class="calendar-filter-btn" class:calendar-filter-btn-active={showFriendsFilterPane} on:click={() => showFriendsFilterPane = !showFriendsFilterPane} title="Filters">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
@@ -5614,41 +5614,48 @@
     display: none;
   }
 
+  .pane-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0 var(--spacing-md);
+  }
+
+  .calendar-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border: 1px solid var(--glass-border-dark);
+    border-radius: var(--radius-md);
+    background: var(--glass-bg-medium);
+    color: var(--dark-text);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .calendar-filter-btn:hover {
+    background: var(--white);
+  }
+
+  .calendar-filter-btn-active {
+    background: var(--primary-color);
+    color: var(--white);
+    border-color: var(--primary-color);
+  }
+
+  .calendar-filter-btn-active:hover {
+    background: var(--primary-hover, var(--primary-color));
+  }
+
   @media (max-width: 640px) {
     .calendar-mobile-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 0 var(--spacing-md);
-    }
-
-    .calendar-filter-btn {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-xs);
-      padding: var(--spacing-xs) var(--spacing-md);
-      border: 1px solid var(--glass-border-dark);
-      border-radius: var(--radius-md);
-      background: var(--glass-bg-medium);
-      color: var(--dark-text);
-      font-size: 0.85rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-
-    .calendar-filter-btn:hover {
-      background: var(--white);
-    }
-
-    .calendar-filter-btn-active {
-      background: var(--primary-color);
-      color: var(--white);
-      border-color: var(--primary-color);
-    }
-
-    .calendar-filter-btn-active:hover {
-      background: var(--primary-hover, var(--primary-color));
     }
   }
 
