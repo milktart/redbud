@@ -781,17 +781,19 @@
     addNewView = 'itemForm';
   }
 
-  function openHotelFormForTrip(tripId) {
+  function openHotelFormForTrip(tripId, gapStart, gapEnd) {
     activePane = 'addNew';
     addNewView = 'itemForm';
     resetAttendeeState();
+    const checkInDate = gapStart ? new Date(gapStart).toISOString().slice(0, 10) : '';
+    const checkOutDate = gapEnd ? new Date(gapEnd).toISOString().slice(0, 10) : '';
     itemForm = {
       itemType: 'hotel',
       tripId: tripId || '',
       status: 'confirmed',
       airline: '', flightNumber: '', departureDate: '', departureTime: '', arrivalDate: '', arrivalTime: '',
       origin: '', destination: '', pnr: '', seat: '',
-      hotelName: '', address: '', phone: '', checkInDate: '', checkInTime: '14:00', checkOutDate: '', checkOutTime: '11:00',
+      hotelName: '', address: '', phone: '', checkInDate, checkInTime: '14:00', checkOutDate, checkOutTime: '11:00',
       confirmationNumber: '', roomNumber: '',
       method: '', journeyNumber: '',
       name: '', startDate: '', startTime: '', endDate: '', endTime: '', allDay: false, location: '',
@@ -1575,7 +1577,7 @@
                       break;
                     }
                   }
-                  rows.splice(insertIdx, 0, { type: 'accommodation-gap', tripId });
+                  rows.splice(insertIdx, 0, { type: 'accommodation-gap', tripId, gapStart: prevEnd, gapEnd: nextStart });
                   gapCardInsertedAfter = lastAnchor;
                 }
               }
@@ -2328,7 +2330,7 @@
                           <span class="layover-line"></span>
                         </div>
                       {:else if row.type === 'accommodation-gap'}
-                        <div class="item-row accommodation-gap" role="button" tabindex="0" on:click={() => openHotelFormForTrip(row.tripId)} on:keydown={(e) => e.key === 'Enter' && openHotelFormForTrip(row.tripId)}>
+                        <div class="item-row accommodation-gap" role="button" tabindex="0" on:click={() => openHotelFormForTrip(row.tripId, row.gapStart, row.gapEnd)} on:keydown={(e) => e.key === 'Enter' && openHotelFormForTrip(row.tripId, row.gapStart, row.gapEnd)}>
                           <div class="item-icon-wrap">
                             <span class="item-icon">{@html getItemIcon('hotel')}</span>
                           </div>
