@@ -1920,10 +1920,20 @@
       });
     }
 
-    // Add companion standalone items (upcoming and in-progress only)
+    // Add standalone items from friends: companion-library items + items the friend explicitly shared
+    // with the current user as an attendee (isOwner=false means the friend owns it)
+    const seenStandaloneIds = new Set();
+    const allFriendStandalone = [
+      ...companionStandaloneItems,
+      ...attendeeStandaloneItems.filter(i => !i.isOwner),
+    ].filter(i => {
+      if (seenStandaloneIds.has(i.id)) return false;
+      seenStandaloneIds.add(i.id);
+      return true;
+    });
     const filteredStandaloneItems = (!filterIds || !filterIds.size)
-      ? companionStandaloneItems
-      : companionStandaloneItems.filter(i => i.user && filterIds.has(i.user.id));
+      ? allFriendStandalone
+      : allFriendStandalone.filter(i => i.user && filterIds.has(i.user.id));
     for (const item of filteredStandaloneItems) {
       const sortDt = getItemSortDateTime(item);
       const itemDate = sortDt ? new Date(sortDt) : null;
@@ -3390,7 +3400,7 @@
           <h3 class="pane-title">Friends' Trips</h3>
         {/if}
 
-        {#key friendsTrips.length + trips.length + companionStandaloneItems.length + selectedFriendsCompanionIds.size + JSON.stringify(visibleItemTypes)}
+        {#key friendsTrips.length + trips.length + companionStandaloneItems.length + attendeeStandaloneItems.length + selectedFriendsCompanionIds.size + JSON.stringify(visibleItemTypes)}
           {@const friendsEntries = getFriendsTimelineEntries(selectedFriendsCompanionIds)}
           {#if friendsEntries.length === 0}
             <p class="pane-empty">No upcoming trips or items from friends.</p>
