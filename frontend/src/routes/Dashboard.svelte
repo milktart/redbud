@@ -537,7 +537,7 @@
   };
 
   // Reactive statement to update map markers when items or timeline tab changes
-  $: if (map && L && (items || activeTimelineTab || activePane || trips || friendsTrips || attendeeStandaloneItems || companionStandaloneItems)) {
+  $: if (map && L && (items || activeTimelineTab || activePane || trips || friendsTrips || attendeeStandaloneItems || companionStandaloneItems || selectedFriendsCompanionIds || visibleItemTypes)) {
     updateMapMarkersFiltered();
   }
 
@@ -1159,7 +1159,7 @@
     // Build the item list from the same source as whichever timeline pane is
     // currently visible, so the map always reflects exactly what the user sees.
     const timelineEntries = activePane === 'shared'
-      ? getFriendsTimelineEntries()
+      ? getFriendsTimelineEntries(selectedFriendsCompanionIds)
       : getAllItemsChronological();
     const seenMapIds = new Set();
     const filteredItems = [];
@@ -1167,14 +1167,14 @@
       if (entry.type === 'trip') {
         for (const dateGroup of (entry.itemsByDate || [])) {
           for (const item of (dateGroup.items || [])) {
-            if (!seenMapIds.has(item.id)) {
+            if (!seenMapIds.has(item.id) && visibleItemTypes[item.itemType] !== false) {
               seenMapIds.add(item.id);
               filteredItems.push(item);
             }
           }
         }
       } else if (entry.type === 'item') {
-        if (!seenMapIds.has(entry.item.id)) {
+        if (!seenMapIds.has(entry.item.id) && visibleItemTypes[entry.item.itemType] !== false) {
           seenMapIds.add(entry.item.id);
           filteredItems.push(entry.item);
         }
