@@ -3526,7 +3526,7 @@
               <div class="attendee-chips">
                 {#each pendingAttendees as pa (pa.email)}
                   <span class="attendee-chip">
-                    <span class="attendee-chip-name">{pa.firstName ? `${pa.firstName}${pa.lastName ? ' ' + pa.lastName : ''}` : pa.email}</span>
+                    <span class="attendee-chip-name">{pa.firstName || pa.email}</span>
                     <button type="button" class="attendee-chip-remove" aria-label="Remove {pa.email}" on:click={() => handleRemovePendingAttendee(pa.email)}>×</button>
                   </span>
                 {/each}
@@ -3907,7 +3907,7 @@
               <div class="attendee-chips">
                 {#each pendingAttendees as pa (pa.email)}
                   <span class="attendee-chip">
-                    <span class="attendee-chip-name">{pa.firstName ? `${pa.firstName}${pa.lastName ? ' ' + pa.lastName : ''}` : pa.email}</span>
+                    <span class="attendee-chip-name">{pa.firstName || pa.email}</span>
                     <button type="button" class="attendee-chip-remove" aria-label="Remove {pa.email}" on:click={() => handleRemovePendingAttendee(pa.email)}>×</button>
                   </span>
                 {/each}
