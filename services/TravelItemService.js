@@ -161,7 +161,14 @@ class TravelItemService extends BaseService {
         throw new Error('You do not have permission to update this item');
       }
 
+      const previousTripId = item.tripId;
       const updatedItem = await this.update(item, data);
+
+      // If the item was just assigned to a (new) trip, inherit that trip's attendees
+      const newTripId = updatedItem.tripId;
+      if (newTripId && newTripId !== previousTripId) {
+        await this.attendeeService.inheritTripAttendees(newTripId, this.itemType, item.id);
+      }
 
       logger.info(`${this.modelName} updated successfully - ID: ${item.id}`);
 

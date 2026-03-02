@@ -111,8 +111,8 @@ exports.createItem = async (req, res) => {
         return apiResponse.badRequest(res, `Unsupported itemType: ${itemType}`);
     }
 
-    // Create item
-    const item = await service.createItem(preparedData, userId);
+    // Create item (pass tripId so attendees are inherited from the trip)
+    const item = await service.createItem(preparedData, userId, { tripId: itemData.tripId });
 
     // Creator always has full permissions
     const enriched = presentationService.enrichItemWithFlags(item, userId, {
