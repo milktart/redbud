@@ -522,6 +522,9 @@
   // Calendar filter state
   let showCalendarFilterSheet = false;
 
+  // Friends trips filter state
+  let showFriendsFilterSheet = false;
+
   // Settings bottom sheet (mobile only)
   let showSettingsSheet = false;
   let visibleItemTypes = {
@@ -3353,7 +3356,17 @@
       {/if}
 
       <PaneColumn span={1} divider={showFriendsFilter}>
-        <h3 class="pane-title">Friends' Trips</h3>
+        {#if isMobileView && sharingFriendsCompanions.length > 0}
+          <div class="calendar-mobile-header">
+            <h3 class="pane-title" style="margin:0">Friends' Trips</h3>
+            <button class="calendar-filter-btn" on:click={() => showFriendsFilterSheet = true} title="Filters">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+              Filters
+            </button>
+          </div>
+        {:else}
+          <h3 class="pane-title">Friends' Trips</h3>
+        {/if}
 
         {#key friendsTrips.length + trips.length + companionStandaloneItems.length + selectedFriendsCompanionIds.size}
           {@const friendsEntries = getFriendsTimelineEntries(selectedFriendsCompanionIds)}
@@ -3448,6 +3461,42 @@
         {/key}
       </PaneColumn>
     </ContentPane>
+
+    <!-- Mobile friends filter bottom sheet -->
+    {#if isMobileView && showFriendsFilterSheet}
+      <div class="edit-sheet-backdrop" on:click={() => showFriendsFilterSheet = false}></div>
+      <div class="edit-sheet edit-sheet-open">
+        <div class="filter-sheet-handle"></div>
+        <div class="edit-sheet-scroll">
+          <div class="filter-sheet-header">
+            <h3 class="pane-title" style="margin:0">Filters</h3>
+            <button class="close-btn" on:click={() => showFriendsFilterSheet = false}>✕</button>
+          </div>
+          <h4 class="filter-section-label">Friends</h4>
+          <div class="companion-filter-list">
+            {#each sharingFriendsCompanions as c (c.companionUser.id)}
+              {@const uid = c.companionUser.id}
+              {@const selected = selectedFriendsCompanionIds.has(uid)}
+              {@const initials = ((c.companionUser.firstName?.[0] ?? '') + (c.companionUser.lastName?.[0] ?? '')).toUpperCase() || c.companionUser.email?.[0]?.toUpperCase() || '?'}
+              {@const name = ((c.companionUser.firstName ?? '') + ' ' + (c.companionUser.lastName ?? '')).trim() || c.companionUser.email}
+              <button
+                class="companion-filter-btn"
+                class:companion-filter-selected={selected}
+                title={name}
+                on:click={() => {
+                  const next = new Set(selectedFriendsCompanionIds);
+                  if (next.has(uid)) next.delete(uid); else next.add(uid);
+                  selectedFriendsCompanionIds = next;
+                }}
+              >
+                <span class="companion-filter-avatar">{initials}</span>
+                <span class="companion-filter-name">{name}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
+      </div>
+    {/if}
   {/if}
 
   {#if activePane === 'addNew'}
