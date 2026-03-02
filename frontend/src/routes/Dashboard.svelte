@@ -4062,6 +4062,8 @@
               Filters
             </button>
           </div>
+        {:else}
+          <h3 class="pane-title">Calendar</h3>
         {/if}
         <CalendarView
           {trips}

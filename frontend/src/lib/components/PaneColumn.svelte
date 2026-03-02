@@ -14,7 +14,8 @@
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
         const w = entry.contentRect.width;
-        zoom = w < 275 ? w / 275 : 1;
+        const threshold = 275 * span;
+        zoom = w < threshold ? w / threshold : 1;
       });
     });
     ro.observe(columnEl);
