@@ -1164,7 +1164,7 @@
     const seenMapIds = new Set();
     const filteredItems = [];
     for (const entry of timelineEntries) {
-      if (entry.type === 'trip') {
+      if (entry.type === 'trip' && visibleItemTypes.trip !== false) {
         for (const dateGroup of (entry.itemsByDate || [])) {
           for (const item of (dateGroup.items || [])) {
             if (!seenMapIds.has(item.id) && visibleItemTypes[item.itemType] !== false) {
@@ -3403,7 +3403,7 @@
                 {#if thisMonth !== prevMonth}
                   <div class="month-header">{thisMonth}</div>
                 {/if}
-                {#if entry.type === 'trip'}
+                {#if entry.type === 'trip' && visibleItemTypes.trip !== false}
                   <div class="trip-card" class:tentative={entry.trip.isConfirmed === false}>
                     <div class="trip-header" role="presentation">
                       <span class="trip-name">{entry.trip.name}</span>
@@ -3453,7 +3453,7 @@
                       <div class="trip-empty">No items in this trip</div>
                     {/if}
                   </div>
-                {:else if visibleItemTypes[entry.item.itemType] !== false}
+                {:else if entry.type === 'item' && visibleItemTypes[entry.item.itemType] !== false}
                   <!-- Standalone item from a companion -->
                   <div class="timeline-item standalone" class:tentative={entry.item.isConfirmed === false}>
                     <div class="item-icon-wrap">
