@@ -2358,9 +2358,9 @@
                               {/if}
                             </div>
                           </div>
-                          {#if item.attendees?.length > 0}
+                          {#if (item.attendees || []).filter(a => a.userId !== $user?.id).length > 0}
                             <div class="attendee-badges">
-                              {#each sortAttendees(item.attendees, item.createdBy) as att (att.id)}
+                              {#each sortAttendees((item.attendees || []).filter(a => a.userId !== $user?.id), item.createdBy) as att (att.id)}
                                 <span class="attendee-badge" title="{att.user?.firstName || ''} {att.user?.lastName || att.user?.email || ''}">{getAttendeeInitials(att.user)}</span>
                               {/each}
                             </div>
