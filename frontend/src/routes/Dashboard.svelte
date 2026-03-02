@@ -524,6 +524,7 @@
 
   // Friends trips filter state
   let showFriendsFilterSheet = false;
+  let showFriendsFilterPane = false;
 
   // Settings bottom sheet (mobile only)
   let showSettingsSheet = false;
@@ -3334,7 +3335,7 @@
 
   {#if activePane === 'shared'}
     {@const sharingFriendsCompanions = companions.filter(c => c.reversePermissionLevel && c.reversePermissionLevel !== 'none')}
-    {@const showFriendsFilter = !isMobileView}
+    {@const showFriendsFilter = !isMobileView && showFriendsFilterPane}
     <ContentPane columns={showFriendsFilter ? 2 : 1} mobileTop="30vh">
       <!-- Filter column — desktop only -->
       {#if showFriendsFilter}
@@ -3397,7 +3398,13 @@
             </button>
           </div>
         {:else}
-          <h3 class="pane-title">Friends' Trips</h3>
+          <div class="calendar-mobile-header">
+            <h3 class="pane-title" style="margin:0">Friends' Trips</h3>
+            <button class="calendar-filter-btn" class:calendar-filter-btn-active={showFriendsFilterPane} on:click={() => showFriendsFilterPane = !showFriendsFilterPane} title="Filters">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+              Filters
+            </button>
+          </div>
         {/if}
 
         {#key friendsTrips.length + trips.length + companionStandaloneItems.length + attendeeStandaloneItems.length + selectedFriendsCompanionIds.size + JSON.stringify(visibleItemTypes)}
@@ -5632,6 +5639,16 @@
 
     .calendar-filter-btn:hover {
       background: var(--white);
+    }
+
+    .calendar-filter-btn-active {
+      background: var(--primary-color);
+      color: var(--white);
+      border-color: var(--primary-color);
+    }
+
+    .calendar-filter-btn-active:hover {
+      background: var(--primary-hover, var(--primary-color));
     }
   }
 
