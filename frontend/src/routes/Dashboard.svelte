@@ -3402,18 +3402,23 @@
 
         {#key friendsTrips.length + trips.length + companionStandaloneItems.length + attendeeStandaloneItems.length + selectedFriendsCompanionIds.size + JSON.stringify(visibleItemTypes)}
           {@const friendsEntries = getFriendsTimelineEntries(selectedFriendsCompanionIds)}
-          {#if friendsEntries.length === 0}
+          {@const visibleEntries = friendsEntries.filter(e =>
+            e.type === 'trip' ? visibleItemTypes.trip !== false
+            : e.type === 'item' ? visibleItemTypes[e.item.itemType] !== false
+            : false
+          )}
+          {#if visibleEntries.length === 0}
             <p class="pane-empty">No upcoming trips or items from friends.</p>
           {:else}
             <div class="timeline-content">
-              {#each friendsEntries as entry, i}
-                {@const prevEntry = i > 0 ? friendsEntries[i - 1] : null}
+              {#each visibleEntries as entry, i}
+                {@const prevEntry = i > 0 ? visibleEntries[i - 1] : null}
                 {@const thisMonth = getMonthYear(entry.sortDate)}
                 {@const prevMonth = prevEntry ? getMonthYear(prevEntry.sortDate) : null}
                 {#if thisMonth !== prevMonth}
                   <div class="month-header">{thisMonth}</div>
                 {/if}
-                {#if entry.type === 'trip' && visibleItemTypes.trip !== false}
+                {#if entry.type === 'trip'}
                   <div class="trip-card" class:tentative={entry.trip.isConfirmed === false}>
                     <div class="trip-header" role="presentation">
                       <span class="trip-name">{entry.trip.name}</span>
@@ -3463,7 +3468,7 @@
                       <div class="trip-empty">No items in this trip</div>
                     {/if}
                   </div>
-                {:else if entry.type === 'item' && visibleItemTypes[entry.item.itemType] !== false}
+                {:else}
                   <!-- Standalone item from a companion -->
                   <div class="timeline-item standalone" class:tentative={entry.item.isConfirmed === false}>
                     <div class="item-icon-wrap">
