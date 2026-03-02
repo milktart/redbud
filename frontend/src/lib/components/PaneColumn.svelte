@@ -30,7 +30,7 @@
     ? `transform: scale(${zoom}); width: ${(1 / zoom) * 100}%; transform-origin: top left;`
     : '';
 
-  $: paddingStyle = `padding: calc(var(--spacing-2xl) * ${zoom});`;
+  $: paddingStyle = `padding-top: calc(var(--spacing-2xl) * ${zoom * zoom}); padding-left: calc(var(--spacing-2xl) * ${zoom * zoom}); padding-right: calc(var(--spacing-2xl) * ${zoom * zoom});`;
 </script>
 
 <div
@@ -53,6 +53,7 @@
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     box-sizing: border-box;
+    padding-bottom: var(--spacing-2xl);
   }
 
   @media (max-width: 640px) {

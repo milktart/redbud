@@ -15,7 +15,7 @@
     position: absolute;
     top: 2.5vh;
     bottom: 2.5vh;
-    left: calc(2.5vh + 50px + 2.5vh);
+    left: calc(2.5vh + var(--nav-btn-size) + 2.5vh);
     width: calc(var(--pane-col-unit) * var(--active-cols));
     background: var(--glass-bg-light);
     backdrop-filter: var(--blur-lg);

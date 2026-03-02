@@ -238,7 +238,8 @@
      CONTENT PANE COLUMN GRID
      ======================================== */
 
-  --pane-full-width: calc(100vw - 2.5vh - 50px - 2.5vh - 2.5vh);
+  --nav-btn-size: clamp(36px, 4vw, 50px);
+  --pane-full-width: calc(100vw - 2.5vh - var(--nav-btn-size) - 2.5vh - 2.5vh);
   --pane-col-unit: calc(var(--pane-full-width) / 4);
 }
 

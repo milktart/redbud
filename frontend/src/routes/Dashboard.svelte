@@ -4116,7 +4116,7 @@
   {/if}
 
   {#if activePane === 'calendar'}
-    <ContentPane columns={isMobileView ? 1 : 4}>
+    <ContentPane columns={isMobileView ? 1 : 4} mobileTop="0">
       <!-- Filter column — desktop only -->
       {#if !isMobileView}
       <PaneColumn span={1}>
@@ -5458,8 +5458,8 @@
   }
 
   .nav-square {
-    width: 50px;
-    height: 50px;
+    width: var(--nav-btn-size);
+    height: var(--nav-btn-size);
     border-radius: var(--radius-md);
     background: var(--glass-bg-medium);
     backdrop-filter: var(--blur-md);
@@ -5476,8 +5476,8 @@
   }
 
   .nav-square svg {
-    width: 22px;
-    height: 22px;
+    width: clamp(16px, 1.75vw, 22px);
+    height: clamp(16px, 1.75vw, 22px);
   }
 
   .nav-square:hover {
