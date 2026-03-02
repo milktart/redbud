@@ -509,6 +509,7 @@
 
   let activeTimelineTab = 'upcoming'; // 'upcoming' | 'past'
   let addNewView = 'menu'; // 'menu' | 'tripForm' | 'itemForm'
+  let addNewReturnPane = null; // pane to return to instead of staying on 'addNew'
   let selectedItem = null; // Currently selected item for editing
   let editForm = {}; // Form data for editing
   let selectedTrip = null; // Currently selected trip for editing
@@ -782,6 +783,7 @@
   }
 
   function openHotelFormForTrip(tripId, gapStart, gapEnd) {
+    addNewReturnPane = activePane !== 'addNew' ? activePane : null;
     activePane = 'addNew';
     addNewView = 'itemForm';
     resetAttendeeState();
@@ -803,6 +805,12 @@
   }
 
   function backToMenu() {
+    if (addNewReturnPane) {
+      activePane = addNewReturnPane;
+      addNewReturnPane = null;
+      resetAttendeeState();
+      return;
+    }
     addNewView = 'menu';
     resetAttendeeState();
     // Reset forms
