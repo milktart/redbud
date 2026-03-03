@@ -178,6 +178,11 @@ export const usersAPI = {
     const response = await api.post('/users/import/execute', { trips, companions, standalone, vouchers });
     return response.data;
   },
+
+  async deleteAllTripData() {
+    const response = await api.delete('/users/data');
+    return response.data;
+  },
 };
 
 // Attendee API

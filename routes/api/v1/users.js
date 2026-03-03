@@ -34,6 +34,12 @@ router.post('/import/preview', ensureAuthenticated, userController.importPreview
 router.post('/import/execute', ensureAuthenticated, userController.executeImport);
 
 /**
+ * DELETE /api/v1/users/data
+ * Delete all trip data (trips, items, standalone items) owned by the authenticated user
+ */
+router.delete('/data', ensureAuthenticated, userController.deleteAllTripData);
+
+/**
  * GET /api/v1/users
  * Get all users (admin only)
  * Returns list of active users with their details

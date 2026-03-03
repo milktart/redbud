@@ -630,6 +630,37 @@ exports.executeImport = async (req, res) => {
 };
 
 /**
+ * DELETE /users/data
+ * Delete all trip data owned by the authenticated user.
+ * Trips, trip-linked items, and standalone items are deleted.
+ * Attendee entries added to other users' trips/items are not affected.
+ */
+exports.deleteAllTripData = async (req, res) => {
+  try {
+    const { Trip, Flight, Hotel, Transportation, CarRental, Event } = require('../models');
+    const userId = req.user.id;
+
+    // Delete standalone items first (no tripId), then all trips (cascade deletes trip-linked items)
+    await Promise.all([
+      Flight.destroy({ where: { userId, tripId: null } }),
+      Hotel.destroy({ where: { userId, tripId: null } }),
+      Transportation.destroy({ where: { userId, tripId: null } }),
+      CarRental.destroy({ where: { userId, tripId: null } }),
+      Event.destroy({ where: { userId, tripId: null } }),
+    ]);
+
+    // Deleting trips will cascade-delete their linked items via DB foreign key
+    const deletedTrips = await Trip.destroy({ where: { userId } });
+
+    logger.info('DELETE_ALL_TRIP_DATA', { userId, deletedTrips });
+    return apiResponse.success(res, { deletedTrips }, 'All trip data deleted successfully');
+  } catch (error) {
+    logger.error('DELETE_ALL_TRIP_DATA_ERROR', { userId: req.user?.id, error: error.message });
+    return apiResponse.internalError(res, 'Error deleting trip data', error);
+  }
+};
+
+/**
  * GET /users/search
  * Search users by email (requires authentication)
  */
