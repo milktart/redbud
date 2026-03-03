@@ -484,7 +484,8 @@ body.scrollable {
 .form-group label {
   display: block;
   margin-bottom: var(--spacing-sm);
-  font-weight: 500;
+  font-size: 0.8rem;
+  font-weight: 600;
   color: var(--dark-text);
 }
 
@@ -1044,5 +1045,504 @@ body.scrollable {
     min-width: 44px;
     min-height: 44px;
     padding: 0.5rem;
+  }
+}
+
+/* =============================================================
+   Dashboard Form & Pane Layout Utilities
+   Used across TimelinePane, AddNewPane, ItemForm, SettingsPane
+   ============================================================= */
+
+/* Form layout */
+.form-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
+}
+
+.form-group--half {
+  flex: 0 0 calc(50% - var(--spacing-sm) / 2);
+  min-width: 0;
+}
+
+.form-group--30 {
+  flex: 0 0 calc(30% - var(--spacing-sm) / 2);
+  min-width: 0;
+}
+
+.form-group--70 {
+  flex: 0 0 calc(70% - var(--spacing-sm) / 2);
+  min-width: 0;
+}
+
+.form-group--60 {
+  flex: 0 0 60%;
+  min-width: 0;
+}
+
+.form-group--40 {
+  flex: 0 0 calc(40% - var(--spacing-sm));
+  min-width: 0;
+}
+
+.form-group--toggle {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.form-row:has(.form-group--toggle) > .form-group:not(.form-group--toggle) {
+  flex: 1;
+  min-width: 0;
+}
+
+.input-with-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.input-with-toggle input,
+.input-with-toggle select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Toggle switch (confirmed/tentative) */
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-switch input[type="checkbox"] {
+  display: none;
+}
+
+.toggle-slider {
+  display: block;
+  position: relative;
+  width: 56px;
+  height: 30px;
+  background: #f59e0b;
+  border-radius: 15px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  background: #fff center/16px 16px no-repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f59e0b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
+  border-radius: 50%;
+  transition: transform 0.2s, background-image 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.toggle-switch input[type="checkbox"]:checked + .toggle-slider {
+  background: #10b981;
+}
+
+.toggle-switch input[type="checkbox"]:checked + .toggle-slider::after {
+  transform: translateX(26px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 11.08V12a10 10 0 1 1-5.93-9.14'/%3E%3Cpolyline points='22 4 12 14.01 9 11.01'/%3E%3C/svg%3E");
+}
+
+.toggle-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--dark-text);
+  white-space: nowrap;
+}
+
+/* Form containers */
+.add-form,
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.form-header {
+  display: flex;
+  gap: 1vh;
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.form-actions-remove .btn-danger-outline {
+  width: 100%;
+}
+
+/* Pane shared */
+.pane-title {
+  margin: 0 0 var(--spacing-md) 0;
+  font-weight: 600;
+  color: var(--dark-text);
+  letter-spacing: 0.01em;
+}
+
+.pane-empty {
+  font-size: 0.875rem;
+  color: var(--gray-text);
+}
+
+/* Edit sheet (mobile bottom sheet) */
+.edit-sheet {
+  display: none;
+}
+
+.edit-header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.edit-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.close-button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass-bg-medium);
+  border: 1px solid var(--glass-border-dark);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--gray-dark);
+  padding: 0;
+  padding-top: 2px;
+  font-family: Arial, sans-serif;
+  font-weight: 400;
+}
+
+.close-button:hover {
+  background: var(--white);
+  color: var(--primary-color);
+}
+
+/* Back button */
+.back-button {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass-bg-medium);
+  border: 1px solid var(--glass-border-dark);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+  color: var(--gray-dark);
+}
+
+.back-button:hover {
+  background: var(--white);
+  color: var(--primary-color);
+  transform: translateX(-2px);
+}
+
+.back-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Timeline tabs */
+.timeline-tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 2px;
+}
+
+.timeline-tab {
+  background: none;
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gray-text);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.timeline-tab:hover {
+  color: var(--primary-color);
+}
+
+.timeline-tab.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  transition: all 0.3s ease-in-out;
+}
+
+/* Add New menu */
+.add-new-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.add-new-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background: var(--glass-bg-medium);
+  border: 1px solid var(--glass-border-dark);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.add-new-option:hover {
+  background: var(--white);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-light);
+}
+
+.add-new-option:active {
+  transform: translateY(0);
+}
+
+.option-icon {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-color);
+  border-radius: var(--radius-md);
+  color: var(--white);
+}
+
+.option-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.option-content {
+  flex: 1;
+}
+
+.option-title {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--dark-text);
+}
+
+.option-description {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--gray-text);
+}
+
+/* Dashboard pane buttons
+   Auth pages use "btn btn-primary" (double class); dashboard uses just "btn-primary".
+   These rules apply only when btn-primary is used alone (without .btn). */
+.btn-primary:not(.btn),
+.btn-secondary:not(.btn),
+.btn-danger:not(.btn) {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border-width: 1px;
+  border-style: solid;
+}
+
+.btn-primary:not(.btn) {
+  background: var(--primary-color);
+  color: var(--white);
+  border-color: transparent;
+}
+
+.btn-primary:not(.btn):hover:not(:disabled) {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:not(.btn):active {
+  transform: translateY(0);
+}
+
+.btn-primary:not(.btn):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary:not(.btn) {
+  background: var(--glass-bg-medium);
+  color: var(--dark-text);
+  border-color: var(--glass-border-dark);
+}
+
+.btn-secondary:not(.btn):hover:not(:disabled) {
+  background: var(--white);
+  border-color: var(--gray-dark);
+}
+
+.btn-danger:not(.btn) {
+  background: #ef4444;
+  color: #fff;
+  border-color: #dc2626;
+}
+
+.btn-danger:not(.btn):hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #b91c1c;
+}
+
+/* form-actions flex layout */
+.form-actions .btn-primary:not(.btn),
+.form-actions .btn-secondary:not(.btn),
+.form-actions .btn-danger:not(.btn),
+.form-actions .btn-danger-outline {
+  flex: 1;
+}
+
+.btn-danger-outline {
+  background: none;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-danger-outline:hover {
+  background: #fee2e2;
+}
+
+/* Mobile bottom sheet (edit-sheet) */
+@media (max-width: 640px) {
+  .edit-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: calc(var(--z-modal) - 1);
+  }
+
+  .edit-sheet {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-modal);
+    background: var(--white);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding: var(--spacing-lg) var(--spacing-2xl) 0;
+    box-shadow: var(--shadow-top);
+    max-height: 80vh;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .edit-sheet.edit-sheet-open {
+    transform: translateY(0);
+  }
+
+  .edit-sheet-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    max-height: calc(80vh - 60px);
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    width: 100%;
+    box-sizing: border-box;
+    scrollbar-width: none;
+  }
+
+  .edit-sheet-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--grey-300);
+    border-radius: 2px;
+    margin: 0 auto var(--spacing-lg);
+  }
+
+  .filter-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-lg);
+  }
+
+  /* Normalize date inputs to match text inputs on iOS */
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    min-height: 44px;
+    height: 44px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 16px;
+    line-height: 1.6;
+    border: 1px solid var(--glass-border-dark);
+    border-radius: var(--radius-md);
+    background: var(--glass-bg-medium);
+    color: var(--dark-text);
+    font-family: inherit;
+    box-sizing: border-box;
+  }
+
+  .form-row {
+    flex-wrap: wrap;
+  }
+
+  .form-group--half,
+  .form-group--30,
+  .form-group--70,
+  .form-group--60,
+  .form-group--40 {
+    flex: 1 1 100%;
   }
 }
