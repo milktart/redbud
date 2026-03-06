@@ -1,9 +1,11 @@
 // API Service
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const AUTH_BASE_URL = import.meta.env.VITE_AUTH_URL || 'https://auth.milkt.art';
+const APP_SLUG = import.meta.env.VITE_APP_SLUG;
 
 class ApiService {
-  async request(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`;
+  async request(endpoint, options = {}, baseUrl = API_BASE_URL) {
+    const url = `${baseUrl}${endpoint}`;
 
     const defaultOptions = {
       credentials: 'include',
@@ -24,6 +26,18 @@ class ApiService {
       const isJSON = contentType && contentType.includes('application/json');
 
       if (!response.ok) {
+        // On 401, attempt a silent token refresh then retry once
+        if (response.status === 401 && !options._isRetry) {
+          const refreshed = await authAPI.refresh();
+          if (refreshed) {
+            return this.request(endpoint, { ...options, _isRetry: true }, baseUrl);
+          }
+          // Refresh failed — redirect to login
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+        }
+
         const error = isJSON ? await response.json() : { message: 'Request failed' };
         const err = new Error(error.message || `HTTP error! status: ${response.status}`);
         err.statusCode = response.status;
@@ -62,29 +76,72 @@ class ApiService {
 
 export const api = new ApiService();
 
-// Auth API
+// Auth API — points at the standalone auth service (/auth/*)
 export const authAPI = {
   async login(identifier, password) {
-    const response = await api.post('/auth/login', { identifier, password });
-    return response.user;
+    const response = await fetch(`${AUTH_BASE_URL}/login`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier, password, appSlug: APP_SLUG }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      const err = new Error(data.message || 'Login failed');
+      err.statusCode = response.status;
+      throw err;
+    }
+    return data.user;
   },
 
   async register(userData) {
-    // userData may contain email or phone (or both); pass through as-is
-    const response = await api.post('/auth/register', userData);
-    return response.data.user;
+    const response = await fetch(`${AUTH_BASE_URL}/register`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...userData, appSlug: APP_SLUG }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      const err = new Error(data.message || 'Registration failed');
+      err.statusCode = response.status;
+      err.errors = data.errors;
+      throw err;
+    }
+    // Response shape: { success: true, data: { user } }
+    return data.data.user;
   },
 
   async logout() {
-    return await api.get('/auth/logout');
+    await fetch(`${AUTH_BASE_URL}/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
   },
 
   async verifySession() {
     try {
-      const response = await api.get('/auth/verify-session');
-      return response.user;
-    } catch (error) {
+      const response = await fetch(`${AUTH_BASE_URL}/verify`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.authenticated ? data.user : null;
+    } catch {
       return null;
+    }
+  },
+
+  async refresh() {
+    try {
+      const response = await fetch(`${AUTH_BASE_URL}/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      return response.ok;
+    } catch {
+      return false;
     }
   },
 };
