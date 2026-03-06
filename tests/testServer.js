@@ -4,7 +4,7 @@
  */
 
 const express = require('express');
-const session = require('express-session');
+const cookieParser = require('cookie-parser');
 
 // Create Express app for testing
 function createTestApp() {
@@ -13,30 +13,16 @@ function createTestApp() {
   // Middleware
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+  app.use(cookieParser());
 
-  // Session middleware (simplified for testing)
-  app.use(
-    session({
-      secret: 'test-secret',
-      resave: false,
-      saveUninitialized: false,
-      cookie: { secure: false },
-    })
-  );
-
-  // Mock authentication middleware
+  // Mock authentication middleware for testing
+  // Tests can pass X-Test-User-Id header to simulate an authenticated user
   app.use((req, res, next) => {
-    // Check for test user header
     const testUserId = req.get('X-Test-User-Id');
     if (testUserId) {
       req.user = { id: testUserId };
-      req.isAuthenticated = () => true;
-    } else if (req.testUser) {
-      req.user = req.testUser;
-      req.isAuthenticated = () => true;
     } else {
       req.user = null;
-      req.isAuthenticated = () => false;
     }
     next();
   });

@@ -1,17 +1,14 @@
 require('dotenv').config();
 const express = require('express');
-const session = require('express-session');
-const { RedisStore } = require('connect-redis');
-const passport = require('passport');
+const cookieParser = require('cookie-parser');
 const compression = require('compression');
 const cors = require('cors');
 const db = require('./models');
 const logger = require('./utils/logger');
 const redis = require('./utils/redis');
-const { MS_PER_DAY } = require('./utils/constants');
 
 // Validate required environment variables
-const requiredEnvVars = ['SESSION_SECRET'];
+const requiredEnvVars = ['JWT_PUBLIC_KEY'];
 const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
 
 if (missingVars.length > 0) {
@@ -31,6 +28,7 @@ app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(compression());
+app.use(cookieParser());
 
 // ============================================================================
 // CORS
@@ -51,46 +49,14 @@ app.use(
 );
 
 // ============================================================================
-// Authentication
-// ============================================================================
-require('./config/passport')(passport);
-
-// ============================================================================
 // Start
 // ============================================================================
 const PORT = process.env.PORT || 3000;
 
 async function initializeApp() {
   try {
-    // Initialize Redis first so the session store can use it
+    // Initialize Redis (used by caching layer)
     await redis.initRedis();
-
-    // Session — registered before routes so it runs for every request
-    const redisClient = redis.getClient();
-    let sessionStore;
-    if (redisClient && redis.isAvailable()) {
-      sessionStore = new RedisStore({ client: redisClient, prefix: 'sess:' });
-      logger.info('Using Redis for session storage');
-    } else {
-      logger.info('Using memory store for sessions (Redis disabled or unavailable)');
-    }
-
-    app.use(
-      session({
-        store: sessionStore,
-        secret: process.env.SESSION_SECRET,
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-          maxAge: parseInt(process.env.SESSION_MAX_AGE, 10) || MS_PER_DAY,
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: process.env.NODE_ENV === 'production' ? 'strict' : false,
-        },
-      })
-    );
-    app.use(passport.initialize());
-    app.use(passport.session());
 
     // ============================================================================
     // Request logging

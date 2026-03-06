@@ -52,7 +52,11 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 FROM node-base AS builder
 
 ARG VITE_API_URL=/api/v1
+ARG VITE_AUTH_URL=https://auth.milkt.art
+ARG VITE_APP_SLUG=redbud
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_AUTH_URL=${VITE_AUTH_URL}
+ENV VITE_APP_SLUG=${VITE_APP_SLUG}
 
 RUN npm run build
 

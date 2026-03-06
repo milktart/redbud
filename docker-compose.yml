@@ -67,8 +67,7 @@ services:
       DB_NAME: ${NODE_ENV}_${DB_NAME}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      SESSION_SECRET: ${SESSION_SECRET}
-      SESSION_MAX_AGE: ${SESSION_MAX_AGE:-86400000}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       REDIS_ENABLED: ${REDIS_ENABLED:-false}
       REDIS_HOST: redis
       REDIS_PORT: 6379

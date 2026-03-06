@@ -3,7 +3,7 @@
 
 // Set test environment
 process.env.NODE_ENV = 'test';
-process.env.SESSION_SECRET = 'test-secret-key';
+process.env.JWT_PUBLIC_KEY = 'test-public-key-placeholder';
 process.env.DB_NAME = process.env.TEST_DB_NAME || 'test_travel_planner';
 process.env.DB_HOST = process.env.TEST_DB_HOST || 'localhost';
 process.env.DB_PORT = process.env.TEST_DB_PORT || '5432';
