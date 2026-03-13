@@ -374,12 +374,55 @@
   $: calendarEvents = (trips, standaloneItems, companionTrips, companionStandaloneItems, externalCalendarEvents, visibleItemTypes, processCalendarEvents());
   $: monthBars = calendarMonths.map(month => calculateBarsForMonth(month, calendarEvents));
 
+  let expandedContainer = null;
+
+  function getOverlappingBars(container, start, end) {
+    return Array.from(container.querySelectorAll('.event-bar')).filter(el => {
+      const s = parseInt(el.dataset.start);
+      const e = parseInt(el.dataset.end);
+      return s <= end && e >= start;
+    });
+  }
+
+  function expandDay(el) {
+    const start = parseInt(el.dataset.start);
+    const end = parseInt(el.dataset.end);
+    const container = el.closest('.bars-container');
+    collapseContainer(expandedContainer);
+    getOverlappingBars(container, start, end).forEach(barEl => {
+      const textEl = barEl.querySelector('.event-bar-text');
+      const fullWidth = textEl.scrollWidth + 8;
+      const naturalWidth = barEl.getBoundingClientRect().width;
+      if (fullWidth > naturalWidth) {
+        barEl.style.setProperty('--expanded-width', fullWidth + 'px');
+        barEl.classList.add('expanded');
+      }
+    });
+    expandedContainer = container;
+  }
+
+  function collapseContainer(container) {
+    if (!container) return;
+    container.querySelectorAll('.event-bar.expanded').forEach(el => el.classList.remove('expanded'));
+    if (expandedContainer === container) expandedContainer = null;
+  }
+
   onMount(() => {
     const interval = setInterval(() => {
       today = new Date();
     }, 60000);
 
-    return () => clearInterval(interval);
+    function handleDocTouch(e) {
+      if (expandedContainer && !expandedContainer.contains(e.target)) {
+        collapseContainer(expandedContainer);
+      }
+    }
+    document.addEventListener('touchstart', handleDocTouch, { passive: true });
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('touchstart', handleDocTouch);
+    };
   });
 </script>
 
@@ -433,6 +476,8 @@
                   class:tentative={bar.tentative}
                   class:companion={bar.companion}
                   class:expand-left={expandLeft}
+                  data-start={bar.startDay}
+                  data-end={bar.endDay}
                   style="
                     left: {expandLeft ? 'auto' : leftPct + '%'};
                     right: {expandLeft ? rightPct + '%' : 'auto'};
@@ -440,18 +485,16 @@
                     top: {bar.row * 20 + 16}px;
                   "
                   title={bar.name}
-                  on:mouseenter={e => {
+                  on:mouseenter={e => expandDay(e.currentTarget)}
+                  on:mouseleave={e => collapseContainer(e.currentTarget.closest('.bars-container'))}
+                  on:touchstart|passive={e => {
                     const el = e.currentTarget;
-                    const textEl = el.querySelector('.event-bar-text');
-                    const fullWidth = textEl.scrollWidth + 8; // 8px for padding
-                    const naturalWidth = el.getBoundingClientRect().width;
-                    if (fullWidth > naturalWidth) {
-                      el.style.setProperty('--expanded-width', fullWidth + 'px');
-                      el.classList.add('expanded');
+                    const container = el.closest('.bars-container');
+                    if (expandedContainer === container) {
+                      collapseContainer(container);
+                    } else {
+                      expandDay(el);
                     }
-                  }}
-                  on:mouseleave={e => {
-                    e.currentTarget.classList.remove('expanded');
                   }}
                 >
                   <span class="event-bar-text">{bar.name}</span>
