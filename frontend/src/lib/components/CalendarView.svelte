@@ -5,6 +5,7 @@
   export let standaloneItems = [];
   export let companionTrips = [];
   export let companionStandaloneItems = [];
+  export let externalCalendarEvents = [];
   export let visibleItemTypes = {
     trip: true, flight: true, hotel: true,
     transportation: true, car_rental: true, event: true
@@ -187,6 +188,22 @@
       }
     });
 
+    // External community event feeds (e.g. theLAgay)
+    externalCalendarEvents.forEach(evt => {
+      if (!evt.startDate) return;
+      events.push({
+        id: evt.id,
+        type: 'external',
+        name: evt.name,
+        startDate: evt.startDate,
+        endDate: evt.endDate || evt.startDate,
+        colorClass: 'color-external',
+        tentative: false,
+        external: true,
+        data: evt.data
+      });
+    });
+
     return events;
   }
 
@@ -354,7 +371,7 @@
   }
 
   $: calendarMonths = generateCalendarMonths();
-  $: calendarEvents = (trips, standaloneItems, companionTrips, companionStandaloneItems, visibleItemTypes, processCalendarEvents());
+  $: calendarEvents = (trips, standaloneItems, companionTrips, companionStandaloneItems, externalCalendarEvents, visibleItemTypes, processCalendarEvents());
   $: monthBars = calendarMonths.map(month => calculateBarsForMonth(month, calendarEvents));
 
   onMount(() => {
@@ -408,16 +425,34 @@
             <!-- Bars layer -->
             <div class="bars-container">
               {#each bars as bar}
+                {@const leftPct = ((bar.startDay - 1) / 31) * 100}
+                {@const rightPct = 100 - ((bar.endDay / 31) * 100)}
+                {@const expandLeft = bar.endDay > 22}
                 <div
                   class="event-bar {bar.colorClass}"
                   class:tentative={bar.tentative}
                   class:companion={bar.companion}
+                  class:expand-left={expandLeft}
                   style="
-                    left: {((bar.startDay - 1) / 31) * 100}%;
+                    left: {expandLeft ? 'auto' : leftPct + '%'};
+                    right: {expandLeft ? rightPct + '%' : 'auto'};
                     width: calc({(bar.width / 31) * 100}% - 1px);
                     top: {bar.row * 20 + 16}px;
                   "
                   title={bar.name}
+                  on:mouseenter={e => {
+                    const el = e.currentTarget;
+                    const textEl = el.querySelector('.event-bar-text');
+                    const fullWidth = textEl.scrollWidth + 8; // 8px for padding
+                    const naturalWidth = el.getBoundingClientRect().width;
+                    if (fullWidth > naturalWidth) {
+                      el.style.setProperty('--expanded-width', fullWidth + 'px');
+                      el.classList.add('expanded');
+                    }
+                  }}
+                  on:mouseleave={e => {
+                    e.currentTarget.classList.remove('expanded');
+                  }}
                 >
                   <span class="event-bar-text">{bar.name}</span>
                 </div>
@@ -566,11 +601,27 @@
     color: white;
     white-space: nowrap;
     overflow: hidden;
+    pointer-events: auto;
+    cursor: default;
+    transition: width 0.18s ease;
+    z-index: 1;
+  }
+
+  .event-bar.expanded {
+    width: var(--expanded-width) !important;
+    overflow: visible;
+    z-index: 10;
   }
 
   .event-bar-text {
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .event-bar.expanded .event-bar-text {
+    overflow: visible;
+    text-overflow: unset;
   }
 
   .event-bar.companion {
@@ -620,6 +671,14 @@
 
   .event-bar.color-event {
     background-color: rgba(96, 165, 250, 0.7);
+  }
+
+  .event-bar.color-external {
+    background:
+      linear-gradient(#FFFFFF90, #FFFFFF90) padding-box,
+      linear-gradient(to bottom right, #f87171, #fb923c, #fbbf24, #4ade80, #60a5fa, #818cf8, #c084fc) border-box;
+    border: 1px solid transparent;
+    color: #111;
   }
 
   .event-bar.color-default {

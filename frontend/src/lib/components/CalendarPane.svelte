@@ -1,4 +1,5 @@
 <script>
+  import { onMount } from 'svelte';
   import ContentPane from './ContentPane.svelte';
   import PaneColumn from './PaneColumn.svelte';
   import CalendarView from './CalendarView.svelte';
@@ -30,6 +31,88 @@
     if (next.has(uid)) next.delete(uid); else next.add(uid);
     selectedCompanionIds = next;
   }
+
+  // ── External event feeds ──────────────────────────────────────────────────
+  const EVENT_FEEDS = [
+    {
+      id: 'thelagay',
+      label: 'theLAgay',
+      url: 'https://thelagay.com/api/apps/69b22cbb487837c2c56dcad9/entities/Event?q=%7B%22status%22:%22approved%22%7D&sort=-event_date&limit=500'
+    }
+  ];
+
+  // Which feeds are toggled on
+  let enabledFeeds = new Set();
+  // Raw calendar events per feed id, loaded once
+  let feedEvents = {}; // { [feedId]: calendarEvent[] }
+  let feedLoading = {}; // { [feedId]: bool }
+  let feedError = {}; // { [feedId]: string|null }
+
+  const ALLOWED_TAGS = new Set(['Afters', 'Darkroom', 'Outdoor', 'Warehouse']);
+  const EXCLUDED_TAGS = new Set(['Day Party', 'Drag']);
+
+  function parseFeedDate(str) {
+    if (!str) return null;
+    const [year, month, day] = str.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  function buildFeedEvents(feedId, rawEvents) {
+    return rawEvents.map(evt => {
+      const startDate = parseFeedDate(evt.event_date);
+      const endDate = parseFeedDate(evt.event_end_date) || startDate;
+      return {
+        id: `ext-${feedId}-${evt._id || Math.random()}`,
+        type: 'external',
+        name: evt.party_name || evt.name || evt.title || 'Community Event',
+        startDate,
+        endDate,
+        colorClass: 'color-external',
+        tentative: false,
+        external: true,
+        data: evt
+      };
+    }).filter(e => {
+      if (!e.startDate) return false;
+      const tags = e.data.tags;
+      if (tags && tags.some(t => EXCLUDED_TAGS.has(t))) return false;
+      if (!tags || tags.length === 0) return true;
+      return tags.some(t => ALLOWED_TAGS.has(t));
+    });
+  }
+
+  async function loadFeed(feed) {
+    if (feedEvents[feed.id]) return; // already loaded
+    feedLoading = { ...feedLoading, [feed.id]: true };
+    feedError = { ...feedError, [feed.id]: null };
+    try {
+      const res = await fetch(feed.url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const raw = Array.isArray(json) ? json : (json.data || json.results || json.items || []);
+      feedEvents = { ...feedEvents, [feed.id]: buildFeedEvents(feed.id, raw) };
+    } catch (err) {
+      feedError = { ...feedError, [feed.id]: err.message || 'Failed to load' };
+    } finally {
+      feedLoading = { ...feedLoading, [feed.id]: false };
+    }
+  }
+
+  function toggleFeed(feed) {
+    const next = new Set(enabledFeeds);
+    if (next.has(feed.id)) {
+      next.delete(feed.id);
+    } else {
+      next.add(feed.id);
+      loadFeed(feed); // fetch on first enable
+    }
+    enabledFeeds = next;
+  }
+
+  // Flatten all enabled feed events into one array for CalendarView
+  $: externalCalendarEvents = EVENT_FEEDS
+    .filter(f => enabledFeeds.has(f.id) && feedEvents[f.id])
+    .flatMap(f => feedEvents[f.id]);
 </script>
 
 <ContentPane columns={isMobileView ? 1 : 4} mobileTop="0">
@@ -59,6 +142,31 @@
         {/each}
       </div>
     {/if}
+
+    <h4 class="filter-section-label">Events</h4>
+    <div class="companion-filter-list">
+      {#each EVENT_FEEDS as feed}
+        {@const selected = enabledFeeds.has(feed.id)}
+        <button
+          class="companion-filter-btn"
+          class:companion-filter-selected={selected}
+          title={feed.label}
+          on:click={() => toggleFeed(feed)}
+        >
+          <span class="companion-filter-avatar feed-avatar">
+            {#if feedLoading[feed.id]}
+              <span class="feed-spinner"></span>
+            {:else}
+              ★
+            {/if}
+          </span>
+          <span class="companion-filter-name">{feed.label}</span>
+          {#if feedError[feed.id]}
+            <span class="feed-error-dot" title={feedError[feed.id]}>!</span>
+          {/if}
+        </button>
+      {/each}
+    </div>
   </PaneColumn>
   {/if}
 
@@ -81,6 +189,7 @@
       companionTrips={filteredCompanionTrips}
       companionStandaloneItems={filteredCompanionItems}
       {visibleItemTypes}
+      {externalCalendarEvents}
     />
   </PaneColumn>
 </ContentPane>
@@ -116,6 +225,31 @@
           {/each}
         </div>
       {/if}
+
+      <h4 class="filter-section-label" style="margin-top: var(--spacing-lg)">Events</h4>
+      <div class="companion-filter-list">
+        {#each EVENT_FEEDS as feed}
+          {@const selected = enabledFeeds.has(feed.id)}
+          <button
+            class="companion-filter-btn"
+            class:companion-filter-selected={selected}
+            title={feed.label}
+            on:click={() => toggleFeed(feed)}
+          >
+            <span class="companion-filter-avatar feed-avatar">
+              {#if feedLoading[feed.id]}
+                <span class="feed-spinner"></span>
+              {:else}
+                ★
+              {/if}
+            </span>
+            <span class="companion-filter-name">{feed.label}</span>
+            {#if feedError[feed.id]}
+              <span class="feed-error-dot" title={feedError[feed.id]}>!</span>
+            {/if}
+          </button>
+        {/each}
+      </div>
     </div>
   </div>
 {/if}
@@ -219,6 +353,75 @@
   .companion-filter-btn.companion-filter-selected .companion-filter-name {
     color: var(--dark-text);
     font-weight: 600;
+  }
+
+  .feed-avatar {
+    position: relative;
+    border: none;
+    background: transparent;
+    font-size: 0.75rem;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    background-image: linear-gradient(to bottom right, #f8717190, #fb923c90, #fbbf2490, #4ade8090, #60a5fa90, #818cf890, #c084fc90);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+
+  .feed-avatar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    padding: 2px;
+    background: linear-gradient(to bottom right, #f8717190, #fb923c90, #fbbf2490, #4ade8090, #60a5fa90, #818cf890, #c084fc90);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .companion-filter-btn.companion-filter-selected .feed-avatar {
+    background: transparent;
+    background-image: linear-gradient(to bottom right, #f8717190, #fb923c90, #fbbf2490, #4ade8090, #60a5fa90, #818cf890, #c084fc90);
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    color: white;
+    -webkit-text-fill-color: white;
+    text-shadow: 0 0 4px rgba(0,0,0,0.3);
+  }
+
+  .companion-filter-btn.companion-filter-selected .feed-avatar::before {
+    -webkit-mask: none;
+    mask: none;
+  }
+
+  .feed-spinner {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid rgba(251, 113, 133, 0.3);
+    border-top-color: rgba(251, 113, 133, 0.9);
+    border-radius: 50%;
+    animation: feed-spin 0.7s linear infinite;
+  }
+
+  @keyframes feed-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .feed-error-dot {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #dc2626;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
 
   @media (max-width: 640px) {
