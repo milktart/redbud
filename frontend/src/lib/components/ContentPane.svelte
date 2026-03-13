@@ -43,11 +43,14 @@
   @media (max-width: 640px) {
     .content-pane {
       top: var(--mobile-top, 2.5vh);
-      bottom: calc(48px + var(--spacing-sm) * 2 + env(safe-area-inset-bottom, 0px));
+      bottom: calc(52px + env(safe-area-inset-bottom, 0px));
       left: 0;
       right: 0;
       width: auto;
       border-radius: 0;
+      border-left: none;
+      border-right: none;
+      border-bottom: none;
     }
   }
 </style>
