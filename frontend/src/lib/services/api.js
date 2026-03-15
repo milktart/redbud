@@ -231,8 +231,8 @@ export const usersAPI = {
     return response.data;
   },
 
-  async executeImport(trips, companions, standalone, vouchers) {
-    const response = await api.post('/users/import/execute', { trips, companions, standalone, vouchers });
+  async executeImport(trips, companions, standalone, vouchers, loyaltyPrograms) {
+    const response = await api.post('/users/import/execute', { trips, companions, standalone, vouchers, loyaltyPrograms });
     return response.data;
   },
 
@@ -256,6 +256,28 @@ export const attendeeAPI = {
 
   async removeAttendee(attendeeId) {
     return await api.delete(`/attendees/${attendeeId}`);
+  },
+};
+
+// Loyalty Program API
+export const loyaltyAPI = {
+  async getMyPrograms() {
+    const response = await api.get('/loyalty');
+    return response.data ?? [];
+  },
+
+  async addProgram(data) {
+    const response = await api.post('/loyalty', data);
+    return response.data;
+  },
+
+  async updateProgram(id, data) {
+    const response = await api.put(`/loyalty/${id}`, data);
+    return response.data;
+  },
+
+  async deleteProgram(id) {
+    return api.delete(`/loyalty/${id}`);
   },
 };
 

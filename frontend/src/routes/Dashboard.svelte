@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { navigate } from 'svelte-routing';
-  import { authAPI, tripAPI, itemAPI, attendeeAPI, companionAPI, usersAPI } from '../lib/services/api';
+  import { authAPI, tripAPI, itemAPI, attendeeAPI, companionAPI, usersAPI, loyaltyAPI } from '../lib/services/api';
   import { lookupAirline } from '../lib/data/airlines.js';
   import { user, isAuthenticated } from '../lib/stores/user';
   import DeleteModal from '../lib/components/DeleteModal.svelte';
@@ -126,7 +126,7 @@
       }
 
       importCompanions = Array.isArray(parsed.companions) ? parsed.companions : [];
-      const result = await usersAPI.importPreview({ trips: parsed.trips, standalone: parsed.standalone ?? null, vouchers: parsed.vouchers ?? null });
+      const result = await usersAPI.importPreview({ trips: parsed.trips, standalone: parsed.standalone ?? null, vouchers: parsed.vouchers ?? null, loyaltyPrograms: parsed.loyaltyPrograms ?? null });
       importData = result;
 
       // Build selection map — duplicates unchecked by default
@@ -154,6 +154,9 @@
       }
       for (const v of (importData.vouchers ?? [])) {
         importSelections[`voucher:${v._importIndex}`] = !v.isDuplicate;
+      }
+      for (const lp of (importData.loyaltyPrograms ?? [])) {
+        importSelections[`loyalty:${lp._importIndex}`] = !lp.isDuplicate;
       }
     } catch (err) {
       importFileError = err.message || 'Failed to process file.';
@@ -215,11 +218,17 @@
       selected: !!importSelections[`voucher:${v._importIndex}`],
     }));
 
+    const loyaltyPayload = (importData.loyaltyPrograms ?? []).map((lp) => ({
+      data: stripAnnotations(lp),
+      selected: !!importSelections[`loyalty:${lp._importIndex}`],
+    }));
+
     try {
-      const result = await usersAPI.executeImport(tripsPayload, importCompanions, standalonePayload, vouchersPayload);
+      const result = await usersAPI.executeImport(tripsPayload, importCompanions, standalonePayload, vouchersPayload, loyaltyPayload);
       importResult = result;
       if (result.imported > 0) {
         await loadTripsAndItems();
+        await loadLoyaltyPrograms();
       }
     } catch (err) {
       importResult = { imported: 0, skipped: 0, errors: [{ error: err.message }] };
@@ -240,11 +249,13 @@
     const standaloneItems = importData.standalone
       ? itemTypes.reduce((n, k) => n + countItems(importData.standalone[k]), 0) : 0;
     const voucherCount = importData.vouchers?.length ?? 0;
+    const loyaltyCount = importData.loyaltyPrograms?.length ?? 0;
     const dups = importData.trips.reduce((n, t) =>
       n + (t.isDuplicate ? 1 : 0) + itemTypes.reduce((m, k) => m + countDups(t[k]), 0), 0)
       + (importData.standalone ? itemTypes.reduce((n, k) => n + countDups(importData.standalone[k]), 0) : 0)
-      + countDups(importData.vouchers);
-    return { trips, items: tripItems + standaloneItems, vouchers: voucherCount, dups };
+      + countDups(importData.vouchers)
+      + countDups(importData.loyaltyPrograms);
+    return { trips, items: tripItems + standaloneItems, vouchers: voucherCount, loyaltyCount, dups };
   })() : null;
 
   async function handleSaveProfile(e) {
@@ -279,6 +290,37 @@
 
   $: if (activeSettingsSection === 'companions') {
     loadCompanions();
+  }
+
+  let loyaltyPrograms = [];
+  let loyaltyLoading = false;
+
+  async function loadLoyaltyPrograms() {
+    loyaltyLoading = true;
+    try {
+      loyaltyPrograms = await loyaltyAPI.getMyPrograms();
+    } finally {
+      loyaltyLoading = false;
+    }
+  }
+
+  $: if (activeSettingsSection === 'loyalty') {
+    loadLoyaltyPrograms();
+  }
+
+  async function handleAddLoyaltyProgram(data) {
+    await loyaltyAPI.addProgram(data);
+    await loadLoyaltyPrograms();
+  }
+
+  async function handleUpdateLoyaltyProgram(id, data) {
+    await loyaltyAPI.updateProgram(id, data);
+    await loadLoyaltyPrograms();
+  }
+
+  async function handleDeleteLoyaltyProgram(id) {
+    await loyaltyAPI.deleteProgram(id);
+    await loadLoyaltyPrograms();
   }
   // ── Attendee management (shared across trip/item forms) ──────────────────────
 
@@ -1700,6 +1742,11 @@
       onSaveEditCompanion={async (id, perm) => { await companionAPI.updatePermission(id, perm); await loadCompanions(); }}
       onRemoveCompanion={async (id) => { await companionAPI.removeCompanion(id); await loadCompanions(); }}
       onSearchCompanions={(q) => companionAPI.searchUsers(q)}
+      {loyaltyPrograms}
+      {loyaltyLoading}
+      onAddLoyaltyProgram={handleAddLoyaltyProgram}
+      onUpdateLoyaltyProgram={handleUpdateLoyaltyProgram}
+      onDeleteLoyaltyProgram={handleDeleteLoyaltyProgram}
     />
   {/if}
 </div>

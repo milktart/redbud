@@ -41,6 +41,13 @@
   export let onRemoveCompanion = null; // (companionUserId) => Promise<void>
   export let onSearchCompanions = null; // (q) => Promise<User[]>
 
+  // loyalty program props and callbacks
+  export let loyaltyPrograms = [];
+  export let loyaltyLoading = false;
+  export let onAddLoyaltyProgram = null;
+  export let onUpdateLoyaltyProgram = null;
+  export let onDeleteLoyaltyProgram = null;
+
   // local state — only relevant within SettingsPane
   let showSettingsSheet = false;
   let addingCompanion = false;
@@ -54,6 +61,14 @@
   let editCompanionPermission = 'view';
   let editCompanionError = '';
 
+  // loyalty local state
+  let addingLoyalty = false;
+  let loyaltyForm = { programName: '', memberNumber: '', category: 'airline' };
+  let loyaltyFormError = '';
+  let editingLoyalty = null;
+  let editLoyaltyForm = { programName: '', memberNumber: '', category: 'airline' };
+  let editLoyaltyError = '';
+
   function selectSection(section) {
     if (onSectionChange) onSectionChange(section);
     if (isMobileView) showSettingsSheet = true;
@@ -66,6 +81,9 @@
     addingCompanion = false;
     addCompanionEmail = '';
     addCompanionError = '';
+    closeEditLoyalty();
+    addingLoyalty = false;
+    loyaltyFormError = '';
     if (onClearImport) onClearImport();
   }
 
@@ -149,8 +167,54 @@
     companionSuggestions = [];
   }
 
+  function openEditLoyalty(prog) {
+    editingLoyalty = prog;
+    editLoyaltyForm = { programName: prog.programName, memberNumber: prog.memberNumber, category: prog.category };
+    editLoyaltyError = '';
+    addingLoyalty = false;
+  }
+
+  function closeEditLoyalty() {
+    editingLoyalty = null;
+    editLoyaltyError = '';
+  }
+
+  async function submitAddLoyalty(e) {
+    e.preventDefault();
+    loyaltyFormError = '';
+    try {
+      await onAddLoyaltyProgram({ ...loyaltyForm });
+      loyaltyForm = { programName: '', memberNumber: '', category: 'airline' };
+      addingLoyalty = false;
+    } catch (err) {
+      loyaltyFormError = err.message ?? 'Failed to add program';
+    }
+  }
+
+  async function submitEditLoyalty(e) {
+    e.preventDefault();
+    editLoyaltyError = '';
+    try {
+      await onUpdateLoyaltyProgram(editingLoyalty.id, { ...editLoyaltyForm });
+      closeEditLoyalty();
+    } catch (err) {
+      editLoyaltyError = err.message ?? 'Failed to update program';
+    }
+  }
+
+  async function submitDeleteLoyalty(id) {
+    editLoyaltyError = '';
+    try {
+      await onDeleteLoyaltyProgram(id);
+      closeEditLoyalty();
+    } catch (err) {
+      editLoyaltyError = err.message ?? 'Failed to remove program';
+    }
+  }
+
   $: companionsPaneSpan = (addingCompanion || editingCompanion) ? 4 : 3;
-  $: dataPaneColumns = activeSettingsSection === 'data' && importData ? 4 : activeSettingsSection === 'companions' ? companionsPaneSpan : activeSettingsSection ? 2 : 1;
+  $: loyaltyPaneSpan = (addingLoyalty || editingLoyalty) ? 4 : 3;
+  $: dataPaneColumns = activeSettingsSection === 'data' && importData ? 4 : activeSettingsSection === 'companions' ? companionsPaneSpan : activeSettingsSection === 'loyalty' ? loyaltyPaneSpan : activeSettingsSection ? 2 : 1;
 </script>
 
 <ContentPane columns={isMobileView ? 1 : dataPaneColumns} mobileTop="0">
@@ -208,6 +272,24 @@
           <div class="settings-option-content">
             <span class="settings-option-label">Travel Companions</span>
             <span class="settings-option-description">Manage your travel companions</span>
+          </div>
+          <svg class="settings-option-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings-section">
+        <h4 class="settings-section-title">Travel</h4>
+        <button class="settings-option" class:active={activeSettingsSection === 'loyalty'} on:click={() => selectSection('loyalty')}>
+          <div class="settings-option-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </div>
+          <div class="settings-option-content">
+            <span class="settings-option-label">Loyalty Programs</span>
+            <span class="settings-option-description">Save your frequent flyer and hotel numbers</span>
           </div>
           <svg class="settings-option-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="9 18 15 12 9 6"/>
@@ -453,6 +535,133 @@
       </PaneColumn>
     {/if}
 
+  <!-- Loyalty Programs section (desktop) -->
+  {:else if activeSettingsSection === 'loyalty' && !isMobileView}
+    <PaneColumn span={2} divider={true}>
+      <div class="edit-header">
+        <h3 class="pane-title">Loyalty Programs</h3>
+        <button class="close-button" on:click={() => { if (onSectionChange) onSectionChange(null); closeEditLoyalty(); addingLoyalty = false; }} aria-label="Close">×</button>
+      </div>
+
+      {#if loyaltyLoading}
+        <p class="companions-empty">Loading...</p>
+      {:else if loyaltyPrograms.length === 0}
+        <p class="companions-empty">No programs saved yet.
+          <button class="companions-add-inline-btn" on:click={() => { addingLoyalty = true; closeEditLoyalty(); }}>+ Add one</button>
+        </p>
+      {:else}
+        <div class="companions-table-wrapper">
+          <table class="companions-table loyalty-table">
+            <thead>
+              <tr>
+                <th>Program</th>
+                <th>Member #</th>
+                <th>Category</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each loyaltyPrograms as prog}
+                <tr class="companion-row" class:selected={editingLoyalty?.id === prog.id}>
+                  <td>{prog.programName}</td>
+                  <td class="loyalty-member-num">{prog.memberNumber}</td>
+                  <td class="loyalty-category">{prog.category === 'car_rental' ? 'Car Rental' : prog.category.charAt(0).toUpperCase() + prog.category.slice(1)}</td>
+                  <td class="col-actions">
+                    <button class="companion-edit-btn" class:active={editingLoyalty?.id === prog.id} on:click={() => openEditLoyalty(prog)} aria-label="Edit">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" class="companions-table-footer">
+                  <button class="companions-add-inline-btn" on:click={() => { addingLoyalty = !addingLoyalty; closeEditLoyalty(); loyaltyFormError = ''; }}>
+                    {addingLoyalty ? '− Cancel' : '+ Add New'}
+                  </button>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      {/if}
+    </PaneColumn>
+
+    {#if addingLoyalty}
+      <PaneColumn span={1} divider={true}>
+        <div class="edit-header">
+          <h3 class="pane-title">Add Program</h3>
+          <button class="close-button" on:click={() => { addingLoyalty = false; loyaltyFormError = ''; }} aria-label="Close">×</button>
+        </div>
+        <form class="edit-form" on:submit={submitAddLoyalty}>
+          <div class="form-group">
+            <label for="loyalty-program-name">Program Name</label>
+            <input type="text" id="loyalty-program-name" bind:value={loyaltyForm.programName} placeholder="e.g. United MileagePlus" required />
+          </div>
+          <div class="form-group">
+            <label for="loyalty-member-num">Member Number</label>
+            <input type="text" id="loyalty-member-num" bind:value={loyaltyForm.memberNumber} placeholder="e.g. UA123456789" required />
+          </div>
+          <div class="form-group">
+            <label for="loyalty-category">Category</label>
+            <select id="loyalty-category" bind:value={loyaltyForm.category}>
+              <option value="airline">Airline</option>
+              <option value="hotel">Hotel</option>
+              <option value="car_rental">Car Rental</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          {#if loyaltyFormError}
+            <p class="companions-error">{loyaltyFormError}</p>
+          {/if}
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" on:click={() => { addingLoyalty = false; loyaltyFormError = ''; }}>Cancel</button>
+            <button type="submit" class="btn-primary">Save</button>
+          </div>
+        </form>
+      </PaneColumn>
+    {:else if editingLoyalty}
+      <PaneColumn span={1} divider={true}>
+        <div class="edit-header">
+          <h3 class="pane-title">Edit Program</h3>
+          <button class="close-button" on:click={closeEditLoyalty} aria-label="Close">×</button>
+        </div>
+        <form class="edit-form" on:submit={submitEditLoyalty}>
+          <div class="form-group">
+            <label for="edit-loyalty-program-name">Program Name</label>
+            <input type="text" id="edit-loyalty-program-name" bind:value={editLoyaltyForm.programName} required />
+          </div>
+          <div class="form-group">
+            <label for="edit-loyalty-member-num">Member Number</label>
+            <input type="text" id="edit-loyalty-member-num" bind:value={editLoyaltyForm.memberNumber} required />
+          </div>
+          <div class="form-group">
+            <label for="edit-loyalty-category">Category</label>
+            <select id="edit-loyalty-category" bind:value={editLoyaltyForm.category}>
+              <option value="airline">Airline</option>
+              <option value="hotel">Hotel</option>
+              <option value="car_rental">Car Rental</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          {#if editLoyaltyError}
+            <p class="companions-error">{editLoyaltyError}</p>
+          {/if}
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" on:click={closeEditLoyalty}>Cancel</button>
+            <button type="submit" class="btn-primary">Save</button>
+          </div>
+          <div class="form-actions-remove">
+            <button type="button" class="btn-danger-outline" on:click={() => submitDeleteLoyalty(editingLoyalty.id)}>Remove</button>
+          </div>
+        </form>
+      </PaneColumn>
+    {/if}
+
   <!-- Data section (desktop) -->
   {:else if activeSettingsSection === 'data' && !isMobileView}
     <PaneColumn span={1} divider={true}>
@@ -465,7 +674,7 @@
         <h4 class="manage-data-section-title">Export Data</h4>
         <p class="settings-export-description">Download a copy of all your travel data including trips, flights, hotels, and other items.</p>
         <div class="form-group">
-          <button type="button" class="btn-primary" on:click={onExportData}>Download</button>
+          <button type="button" class="btn-primary" style="width:100%" on:click={onExportData}>Download</button>
         </div>
       </div>
 
@@ -510,7 +719,7 @@
             <p class="import-summary-text">
               <strong>{importSummary.trips}</strong> trip{importSummary.trips !== 1 ? 's' : ''},
               <strong>{importSummary.items}</strong> item{importSummary.items !== 1 ? 's' : ''}
-              {#if importSummary.vouchers > 0}, <strong>{importSummary.vouchers}</strong> voucher{importSummary.vouchers !== 1 ? 's' : ''}{/if}
+              {#if importSummary.vouchers > 0}, <strong>{importSummary.vouchers}</strong> voucher{importSummary.vouchers !== 1 ? 's' : ''}{/if}{#if importSummary.loyaltyCount > 0}, <strong>{importSummary.loyaltyCount}</strong> loyalty program{importSummary.loyaltyCount !== 1 ? 's' : ''}{/if}
               found
               {#if importSummary.dups > 0}
                 — <span class="import-dup-count">{importSummary.dups} possible duplicate{importSummary.dups !== 1 ? 's' : ''} detected</span>
@@ -544,7 +753,7 @@
         </h4>
         <p class="settings-export-description">These actions are permanent and cannot be undone.</p>
         <div class="form-group">
-          <button type="button" class="btn-danger" on:click={onShowDeleteDataModal}>Delete All Trip Data</button>
+          <button type="button" class="btn-danger" style="width:100%" on:click={onShowDeleteDataModal}>Delete All Trip Data</button>
         </div>
       </div>
     </PaneColumn>
@@ -684,6 +893,28 @@
               {/each}
             </div>
           {/if}
+
+          {#if importData.loyaltyPrograms?.length > 0}
+            <div class="import-trip-block">
+              <div class="import-row import-row--section-header">Loyalty Programs</div>
+              {#each importData.loyaltyPrograms as lp (lp._importIndex)}
+                {@const lpKey = `loyalty:${lp._importIndex}`}
+                <label class="import-row import-row--item">
+                  <input type="checkbox" checked={importSelections[lpKey]} on:change={(e) => {
+                    if (onImportSelectionChange) onImportSelectionChange(lpKey, e.target.checked);
+                  }} />
+                  <span class="import-row-type-badge">{lp.category === 'car_rental' ? 'Car Rental' : lp.category?.charAt(0).toUpperCase() + lp.category?.slice(1)}</span>
+                  <span class="import-row-name">{lp.programName} — {lp.memberNumber}</span>
+                  {#if lp.isDuplicate}
+                    <span class="import-dup-badge">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="import-dup-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                      Possible duplicate
+                    </span>
+                  {/if}
+                </label>
+              {/each}
+            </div>
+          {/if}
         </div>
       </PaneColumn>
     {/if}
@@ -774,6 +1005,11 @@
             {#if addingCompanion}Add Companion
             {:else if editingCompanion}Edit Companion
             {:else}Travel Companions
+            {/if}
+          {:else if activeSettingsSection === 'loyalty'}
+            {#if addingLoyalty}Add Program
+            {:else if editingLoyalty}Edit Program
+            {:else}Loyalty Programs
             {/if}
           {:else if activeSettingsSection === 'data'}Manage Data
           {/if}
@@ -1014,12 +1250,121 @@
           {/if}
         {/if}
 
+      {:else if activeSettingsSection === 'loyalty'}
+        {#if addingLoyalty}
+          <form class="edit-form" on:submit={submitAddLoyalty}>
+            <div class="form-group">
+              <label for="loyalty-sheet-program-name">Program Name</label>
+              <input type="text" id="loyalty-sheet-program-name" bind:value={loyaltyForm.programName} placeholder="e.g. United MileagePlus" required />
+            </div>
+            <div class="form-group">
+              <label for="loyalty-sheet-member-num">Member Number</label>
+              <input type="text" id="loyalty-sheet-member-num" bind:value={loyaltyForm.memberNumber} placeholder="e.g. UA123456789" required />
+            </div>
+            <div class="form-group">
+              <label for="loyalty-sheet-category">Category</label>
+              <select id="loyalty-sheet-category" bind:value={loyaltyForm.category}>
+                <option value="airline">Airline</option>
+                <option value="hotel">Hotel</option>
+                <option value="car_rental">Car Rental</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            {#if loyaltyFormError}
+              <p class="companions-error">{loyaltyFormError}</p>
+            {/if}
+            <div class="form-actions">
+              <button type="button" class="btn-secondary" on:click={() => { addingLoyalty = false; loyaltyFormError = ''; }}>Cancel</button>
+              <button type="submit" class="btn-primary">Save</button>
+            </div>
+          </form>
+
+        {:else if editingLoyalty}
+          <form class="edit-form" on:submit={submitEditLoyalty}>
+            <div class="form-group">
+              <label for="edit-loyalty-sheet-program-name">Program Name</label>
+              <input type="text" id="edit-loyalty-sheet-program-name" bind:value={editLoyaltyForm.programName} required />
+            </div>
+            <div class="form-group">
+              <label for="edit-loyalty-sheet-member-num">Member Number</label>
+              <input type="text" id="edit-loyalty-sheet-member-num" bind:value={editLoyaltyForm.memberNumber} required />
+            </div>
+            <div class="form-group">
+              <label for="edit-loyalty-sheet-category">Category</label>
+              <select id="edit-loyalty-sheet-category" bind:value={editLoyaltyForm.category}>
+                <option value="airline">Airline</option>
+                <option value="hotel">Hotel</option>
+                <option value="car_rental">Car Rental</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            {#if editLoyaltyError}
+              <p class="companions-error">{editLoyaltyError}</p>
+            {/if}
+            <div class="form-actions">
+              <button type="button" class="btn-secondary" on:click={closeEditLoyalty}>Cancel</button>
+              <button type="submit" class="btn-primary">Save</button>
+            </div>
+            <div class="form-actions-remove">
+              <button type="button" class="btn-danger-outline" on:click={() => submitDeleteLoyalty(editingLoyalty.id)}>Remove</button>
+            </div>
+          </form>
+
+        {:else}
+          {#if loyaltyLoading}
+            <p class="companions-empty">Loading...</p>
+          {:else if loyaltyPrograms.length === 0}
+            <p class="companions-empty">No programs saved yet.
+              <button class="companions-add-inline-btn" on:click={() => { addingLoyalty = true; closeEditLoyalty(); }}>+ Add one</button>
+            </p>
+          {:else}
+            <div class="companions-table-wrapper">
+              <table class="companions-table loyalty-table">
+                <thead>
+                  <tr>
+                    <th>Program</th>
+                    <th>Member #</th>
+                    <th>Category</th>
+                    <th class="col-actions"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each loyaltyPrograms as prog}
+                    <tr class="companion-row" class:selected={editingLoyalty?.id === prog.id}>
+                      <td>{prog.programName}</td>
+                      <td class="loyalty-member-num">{prog.memberNumber}</td>
+                      <td class="loyalty-category">{prog.category === 'car_rental' ? 'Car Rental' : prog.category.charAt(0).toUpperCase() + prog.category.slice(1)}</td>
+                      <td class="col-actions">
+                        <button class="companion-edit-btn" on:click={() => openEditLoyalty(prog)} aria-label="Edit">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="4" class="companions-table-footer">
+                      <button class="companions-add-inline-btn" on:click={() => { addingLoyalty = true; closeEditLoyalty(); loyaltyFormError = ''; }}>
+                        + Add New
+                      </button>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          {/if}
+        {/if}
+
       {:else if activeSettingsSection === 'data'}
         <div class="manage-data-section">
           <h4 class="manage-data-section-title">Export Data</h4>
           <p class="settings-export-description">Download a copy of all your travel data including trips, flights, hotels, and other items.</p>
           <div class="form-group">
-            <button type="button" class="btn-primary" on:click={onExportData}>Download</button>
+            <button type="button" class="btn-primary" style="width:100%" on:click={onExportData}>Download</button>
           </div>
         </div>
 
@@ -1064,7 +1409,7 @@
               <p class="import-summary-text">
                 <strong>{importSummary.trips}</strong> trip{importSummary.trips !== 1 ? 's' : ''},
                 <strong>{importSummary.items}</strong> item{importSummary.items !== 1 ? 's' : ''}
-                {#if importSummary.vouchers > 0}, <strong>{importSummary.vouchers}</strong> voucher{importSummary.vouchers !== 1 ? 's' : ''}{/if}
+                {#if importSummary.vouchers > 0}, <strong>{importSummary.vouchers}</strong> voucher{importSummary.vouchers !== 1 ? 's' : ''}{/if}{#if importSummary.loyaltyCount > 0}, <strong>{importSummary.loyaltyCount}</strong> loyalty program{importSummary.loyaltyCount !== 1 ? 's' : ''}{/if}
                 found
                 {#if importSummary.dups > 0}
                   — <span class="import-dup-count">{importSummary.dups} possible duplicate{importSummary.dups !== 1 ? 's' : ''} detected</span>
@@ -1213,6 +1558,28 @@
                   {/each}
                 </div>
               {/if}
+
+              {#if importData.loyaltyPrograms?.length > 0}
+                <div class="import-trip-block">
+                  <div class="import-row import-row--section-header">Loyalty Programs</div>
+                  {#each importData.loyaltyPrograms as lp (lp._importIndex)}
+                    {@const lpKey = `loyalty:${lp._importIndex}`}
+                    <label class="import-row import-row--item">
+                      <input type="checkbox" checked={importSelections[lpKey]} on:change={(e) => {
+                        if (onImportSelectionChange) onImportSelectionChange(lpKey, e.target.checked);
+                      }} />
+                      <span class="import-row-type-badge">{lp.category === 'car_rental' ? 'Car Rental' : lp.category?.charAt(0).toUpperCase() + lp.category?.slice(1)}</span>
+                      <span class="import-row-name">{lp.programName} — {lp.memberNumber}</span>
+                      {#if lp.isDuplicate}
+                        <span class="import-dup-badge">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="import-dup-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                          Possible duplicate
+                        </span>
+                      {/if}
+                    </label>
+                  {/each}
+                </div>
+              {/if}
             </div>
 
             <div class="form-actions">
@@ -1231,7 +1598,7 @@
           </h4>
           <p class="settings-export-description">These actions are permanent and cannot be undone.</p>
           <div class="form-group">
-            <button type="button" class="btn-danger" on:click={onShowDeleteDataModal}>Delete All Trip Data</button>
+            <button type="button" class="btn-danger" style="width:100%" on:click={onShowDeleteDataModal}>Delete All Trip Data</button>
           </div>
         </div>
       {/if}

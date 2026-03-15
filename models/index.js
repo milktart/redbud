@@ -24,6 +24,7 @@ db.Attendee = require('./Attendee')(sequelize, Sequelize);
 db.Voucher = require('./Voucher')(sequelize, Sequelize);
 db.VoucherAttachment = require('./VoucherAttachment')(sequelize, Sequelize);
 db.Airport = require('./Airport')(sequelize, Sequelize);
+db.LoyaltyProgram = require('./LoyaltyProgram')(sequelize, Sequelize);
 
 // Define associations
 Object.keys(db).forEach((modelName) => {

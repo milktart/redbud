@@ -172,7 +172,7 @@ exports.updateMe = async (req, res) => {
  */
 exports.exportData = async (req, res) => {
   try {
-    const { Trip, Flight, Hotel, Transportation, CarRental, Event, Companion, Attendee, User, Voucher } = require('../models');
+    const { Trip, Flight, Hotel, Transportation, CarRental, Event, Companion, Attendee, User, Voucher, LoyaltyProgram } = require('../models');
     const userId = req.user.id;
     const { Op } = require('sequelize');
 
@@ -300,12 +300,20 @@ exports.exportData = async (req, res) => {
       return { ...rest, _sourceId: id };
     });
 
+    // Export loyalty programs
+    const loyaltyPrograms = await LoyaltyProgram.findAll({ where: { userId }, order: [['programName', 'ASC']] });
+    const loyaltyData = loyaltyPrograms.map((lp) => {
+      const { id, userId: _u, createdAt, updatedAt, ...rest } = lp.toJSON();
+      return { ...rest, _sourceId: id };
+    });
+
     const exportData = {
       exportedAt: new Date().toISOString(),
       companions: companionsData,
       trips: tripsData,
       standalone: standaloneData,
       vouchers: vouchersData,
+      loyaltyPrograms: loyaltyData,
     };
     res.setHeader('Content-Disposition', 'attachment; filename="travel-data.json"');
     res.setHeader('Content-Type', 'application/json');
@@ -323,10 +331,10 @@ exports.exportData = async (req, res) => {
  */
 exports.importPreview = async (req, res) => {
   try {
-    const { Trip, Flight, Hotel, Transportation, CarRental, Event, Voucher } = require('../models');
+    const { Trip, Flight, Hotel, Transportation, CarRental, Event, Voucher, LoyaltyProgram } = require('../models');
     const { Op } = require('sequelize');
     const userId = req.user.id;
-    const { trips: importedTrips, standalone: importedStandalone, vouchers: importedVouchers } = req.body;
+    const { trips: importedTrips, standalone: importedStandalone, vouchers: importedVouchers, loyaltyPrograms: importedLoyalty } = req.body;
 
     if (!Array.isArray(importedTrips)) {
       return apiResponse.badRequest(res, 'Request body must contain a "trips" array');
@@ -416,7 +424,19 @@ exports.importPreview = async (req, res) => {
       }));
     }
 
-    return apiResponse.success(res, { trips: annotatedTrips, standalone: annotatedStandalone, vouchers: annotatedVouchers }, 'Preview generated');
+    // Annotate loyalty programs with duplicate detection
+    let annotatedLoyalty = null;
+    if (Array.isArray(importedLoyalty) && importedLoyalty.length > 0) {
+      const existingPrograms = await LoyaltyProgram.findAll({ where: { userId }, attributes: ['programName', 'memberNumber'] });
+      const existingSet = new Set(existingPrograms.map((lp) => `${lp.programName}|${lp.memberNumber}`));
+      annotatedLoyalty = importedLoyalty.map((lp, i) => {
+        const key = `${lp.programName}|${lp.memberNumber}`;
+        const isDuplicate = existingSet.has(key);
+        return { ...lp, _importIndex: i, isDuplicate, duplicateOf: isDuplicate ? { programName: lp.programName } : null };
+      });
+    }
+
+    return apiResponse.success(res, { trips: annotatedTrips, standalone: annotatedStandalone, vouchers: annotatedVouchers, loyaltyPrograms: annotatedLoyalty }, 'Preview generated');
   } catch (error) {
     logger.error('IMPORT_PREVIEW_ERROR', { userId: req.user?.id, error: error.message });
     return apiResponse.internalError(res, 'Error generating import preview', error);
@@ -430,9 +450,9 @@ exports.importPreview = async (req, res) => {
  */
 exports.executeImport = async (req, res) => {
   try {
-    const { Trip, Flight, Hotel, Transportation, CarRental, Event, Companion, Attendee, User, Voucher } = require('../models');
+    const { Trip, Flight, Hotel, Transportation, CarRental, Event, Companion, Attendee, User, Voucher, LoyaltyProgram } = require('../models');
     const userId = req.user.id;
-    const { trips: importTrips, companions: importCompanions, standalone: importStandalone, vouchers: importVouchers } = req.body;
+    const { trips: importTrips, companions: importCompanions, standalone: importStandalone, vouchers: importVouchers, loyaltyPrograms: importLoyalty } = req.body;
 
     if (!Array.isArray(importTrips)) {
       return apiResponse.badRequest(res, 'Request body must contain a "trips" array');
@@ -597,6 +617,30 @@ exports.executeImport = async (req, res) => {
             errors.push({ type: 'voucher', voucherNumber: voucherData.voucherNumber, error: err.message });
             skipped++;
           }
+        }
+      }
+    }
+
+    // Import loyalty programs — skip exact duplicates (same programName + memberNumber)
+    if (Array.isArray(importLoyalty)) {
+      for (const lpEntry of importLoyalty) {
+        const { data: lpData, selected: lpSelected } = lpEntry;
+        if (!lpSelected) { skipped++; continue; }
+
+        try {
+          const { _sourceId, createdAt, updatedAt, ...cleanLpData } = lpData;
+          const [, created] = await LoyaltyProgram.findOrCreate({
+            where: { userId, programName: cleanLpData.programName, memberNumber: cleanLpData.memberNumber },
+            defaults: { ...cleanLpData, userId },
+          });
+          if (created) {
+            imported++;
+          } else {
+            skipped++;
+          }
+        } catch (err) {
+          errors.push({ type: 'loyaltyProgram', programName: lpData.programName, error: err.message });
+          skipped++;
         }
       }
     }
