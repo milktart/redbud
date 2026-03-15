@@ -16,11 +16,11 @@ exports.getMyPrograms = async (req, res) => {
 
 exports.addProgram = async (req, res) => {
   try {
-    const { programName, memberNumber, category } = req.body;
+    const { programName, memberNumber, category, accountFirstName, accountLastName } = req.body;
     if (!programName || !memberNumber) {
       return apiResponse.badRequest(res, 'Program name and member number are required');
     }
-    const program = await loyaltyService.addProgram(req.user.id, { programName, memberNumber, category });
+    const program = await loyaltyService.addProgram(req.user.id, { programName, memberNumber, category, accountFirstName, accountLastName });
     return apiResponse.created(res, program, 'Loyalty program added');
   } catch (error) {
     logger.error('ADD_LOYALTY_PROGRAM_ERROR', { userId: req.user.id, error: error.message });

@@ -210,6 +210,14 @@ async function createEnumTables() {
 
 async function applySchemaPatches() {
   await sequelize.query(`
+    ALTER TABLE "loyalty_programs"
+      ADD COLUMN IF NOT EXISTS "accountFirstName" VARCHAR(255) DEFAULT NULL;
+  `);
+  await sequelize.query(`
+    ALTER TABLE "loyalty_programs"
+      ADD COLUMN IF NOT EXISTS "accountLastName" VARCHAR(255) DEFAULT NULL;
+  `);
+  await sequelize.query(`
     ALTER TABLE "users"
       ADD COLUMN IF NOT EXISTS "isPhantom" BOOLEAN NOT NULL DEFAULT false;
   `);

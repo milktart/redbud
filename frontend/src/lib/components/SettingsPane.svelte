@@ -63,10 +63,10 @@
 
   // loyalty local state
   let addingLoyalty = false;
-  let loyaltyForm = { programName: '', memberNumber: '', category: 'airline' };
+  let loyaltyForm = { programName: '', memberNumber: '', category: 'airline', accountFirstName: '', accountLastName: '' };
   let loyaltyFormError = '';
   let editingLoyalty = null;
-  let editLoyaltyForm = { programName: '', memberNumber: '', category: 'airline' };
+  let editLoyaltyForm = { programName: '', memberNumber: '', category: 'airline', accountFirstName: '', accountLastName: '' };
   let editLoyaltyError = '';
 
   function selectSection(section) {
@@ -169,7 +169,7 @@
 
   function openEditLoyalty(prog) {
     editingLoyalty = prog;
-    editLoyaltyForm = { programName: prog.programName, memberNumber: prog.memberNumber, category: prog.category };
+    editLoyaltyForm = { programName: prog.programName, memberNumber: prog.memberNumber, category: prog.category, accountFirstName: prog.accountFirstName ?? '', accountLastName: prog.accountLastName ?? '' };
     editLoyaltyError = '';
     addingLoyalty = false;
   }
@@ -184,7 +184,7 @@
     loyaltyFormError = '';
     try {
       await onAddLoyaltyProgram({ ...loyaltyForm });
-      loyaltyForm = { programName: '', memberNumber: '', category: 'airline' };
+      loyaltyForm = { programName: '', memberNumber: '', category: 'airline', accountFirstName: '', accountLastName: '' };
       addingLoyalty = false;
     } catch (err) {
       loyaltyFormError = err.message ?? 'Failed to add program';
@@ -210,6 +210,14 @@
     } catch (err) {
       editLoyaltyError = err.message ?? 'Failed to remove program';
     }
+  }
+
+  function formatMRZName(firstName, lastName) {
+    if (!lastName) return '';
+    const normalize = (s) => s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z]/g, '');
+    const last = normalize(lastName);
+    const first = firstName ? normalize(firstName) : '';
+    return first ? `${last}/${first}` : last;
   }
 
   $: companionsPaneSpan = (addingCompanion || editingCompanion) ? 4 : 3;
@@ -556,7 +564,7 @@
               <tr>
                 <th>Program</th>
                 <th>Member #</th>
-                <th>Category</th>
+                <th>Name</th>
                 <th class="col-actions"></th>
               </tr>
             </thead>
@@ -565,7 +573,7 @@
                 <tr class="companion-row" class:selected={editingLoyalty?.id === prog.id}>
                   <td>{prog.programName}</td>
                   <td class="loyalty-member-num">{prog.memberNumber}</td>
-                  <td class="loyalty-category">{prog.category === 'car_rental' ? 'Car Rental' : prog.category.charAt(0).toUpperCase() + prog.category.slice(1)}</td>
+                  <td class="loyalty-mrz-name">{formatMRZName(prog.accountFirstName, prog.accountLastName)}</td>
                   <td class="col-actions">
                     <button class="companion-edit-btn" class:active={editingLoyalty?.id === prog.id} on:click={() => openEditLoyalty(prog)} aria-label="Edit">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -615,6 +623,14 @@
               <option value="other">Other</option>
             </select>
           </div>
+          <div class="form-group">
+            <label for="loyalty-account-first-name">Account First Name</label>
+            <input type="text" id="loyalty-account-first-name" bind:value={loyaltyForm.accountFirstName} placeholder="As shown on account" />
+          </div>
+          <div class="form-group">
+            <label for="loyalty-account-last-name">Account Last Name</label>
+            <input type="text" id="loyalty-account-last-name" bind:value={loyaltyForm.accountLastName} placeholder="As shown on account" />
+          </div>
           {#if loyaltyFormError}
             <p class="companions-error">{loyaltyFormError}</p>
           {/if}
@@ -647,6 +663,14 @@
               <option value="car_rental">Car Rental</option>
               <option value="other">Other</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label for="edit-loyalty-account-first-name">Account First Name</label>
+            <input type="text" id="edit-loyalty-account-first-name" bind:value={editLoyaltyForm.accountFirstName} placeholder="As shown on account" />
+          </div>
+          <div class="form-group">
+            <label for="edit-loyalty-account-last-name">Account Last Name</label>
+            <input type="text" id="edit-loyalty-account-last-name" bind:value={editLoyaltyForm.accountLastName} placeholder="As shown on account" />
           </div>
           {#if editLoyaltyError}
             <p class="companions-error">{editLoyaltyError}</p>
@@ -1270,6 +1294,14 @@
                 <option value="other">Other</option>
               </select>
             </div>
+            <div class="form-group">
+              <label for="loyalty-sheet-account-first-name">Account First Name</label>
+              <input type="text" id="loyalty-sheet-account-first-name" bind:value={loyaltyForm.accountFirstName} placeholder="As shown on account" />
+            </div>
+            <div class="form-group">
+              <label for="loyalty-sheet-account-last-name">Account Last Name</label>
+              <input type="text" id="loyalty-sheet-account-last-name" bind:value={loyaltyForm.accountLastName} placeholder="As shown on account" />
+            </div>
             {#if loyaltyFormError}
               <p class="companions-error">{loyaltyFormError}</p>
             {/if}
@@ -1298,6 +1330,14 @@
                 <option value="other">Other</option>
               </select>
             </div>
+            <div class="form-group">
+              <label for="edit-loyalty-sheet-account-first-name">Account First Name</label>
+              <input type="text" id="edit-loyalty-sheet-account-first-name" bind:value={editLoyaltyForm.accountFirstName} placeholder="As shown on account" />
+            </div>
+            <div class="form-group">
+              <label for="edit-loyalty-sheet-account-last-name">Account Last Name</label>
+              <input type="text" id="edit-loyalty-sheet-account-last-name" bind:value={editLoyaltyForm.accountLastName} placeholder="As shown on account" />
+            </div>
             {#if editLoyaltyError}
               <p class="companions-error">{editLoyaltyError}</p>
             {/if}
@@ -1324,7 +1364,7 @@
                   <tr>
                     <th>Program</th>
                     <th>Member #</th>
-                    <th>Category</th>
+                    <th>Name</th>
                     <th class="col-actions"></th>
                   </tr>
                 </thead>
@@ -1333,7 +1373,7 @@
                     <tr class="companion-row" class:selected={editingLoyalty?.id === prog.id}>
                       <td>{prog.programName}</td>
                       <td class="loyalty-member-num">{prog.memberNumber}</td>
-                      <td class="loyalty-category">{prog.category === 'car_rental' ? 'Car Rental' : prog.category.charAt(0).toUpperCase() + prog.category.slice(1)}</td>
+                      <td class="loyalty-mrz-name">{formatMRZName(prog.accountFirstName, prog.accountLastName)}</td>
                       <td class="col-actions">
                         <button class="companion-edit-btn" on:click={() => openEditLoyalty(prog)} aria-label="Edit">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

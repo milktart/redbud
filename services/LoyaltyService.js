@@ -11,11 +11,11 @@ class LoyaltyService extends BaseService {
   }
 
   async addProgram(userId, data) {
-    const { programName, memberNumber, category } = data;
+    const { programName, memberNumber, category, accountFirstName, accountLastName } = data;
     if (!programName || !memberNumber) {
       throw new Error('Program name and member number are required');
     }
-    return this.create({ userId, programName, memberNumber, category: category || 'other' });
+    return this.create({ userId, programName, memberNumber, category: category || 'other', accountFirstName: accountFirstName || null, accountLastName: accountLastName || null });
   }
 
   async updateProgram(id, userId, data) {

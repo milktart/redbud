@@ -29,6 +29,14 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 'other',
       },
+      accountFirstName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      accountLastName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
     },
     {
       tableName: 'loyalty_programs',
