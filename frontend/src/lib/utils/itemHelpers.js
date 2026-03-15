@@ -186,7 +186,7 @@ export function getLayoverDuration(prevFlight, nextFlight) {
   const nextIds = new Set((nextFlight.attendees || []).map(a => a.userId));
   if (prevIds.size !== nextIds.size || ![...prevIds].every(id => nextIds.has(id))) return null;
   const diffMs = new Date(nextFlight.departureDateTime) - new Date(prevFlight.arrivalDateTime);
-  if (diffMs <= 0 || diffMs >= 30 * 60 * 60 * 1000) return null;
+  if (diffMs <= 0 || diffMs >= 48 * 60 * 60 * 1000) return null;
   const totalMins = Math.round(diffMs / 60000);
   const h = Math.floor(totalMins / 60);
   const m = totalMins % 60;
@@ -348,17 +348,27 @@ export function groupItemsByDate(items) {
     const itemTimezone = getItemLocalTimezone(item);
     const { date: localDate, time: localTime } = utcDateTimeParts(dateTime, itemTimezone);
     const dateKey = localDate || new Date(dateTime).toISOString().split('T')[0];
+    const utcMs = new Date(dateTime).getTime();
 
     if (!grouped[dateKey]) {
-      grouped[dateKey] = { dateKey, items: [] };
+      grouped[dateKey] = { dateKey, items: [], minUtcMs: utcMs };
+    } else if (utcMs < grouped[dateKey].minUtcMs) {
+      grouped[dateKey].minUtcMs = utcMs;
     }
 
-    grouped[dateKey].items.push({ item, localTime: localTime || '00:00' });
+    grouped[dateKey].items.push({ item, localTime: localTime || '00:00', utcMs });
   }
 
-  const result = Object.values(grouped).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+  // Sort date groups by the earliest UTC timestamp in each group rather than the
+  // local date key string. This prevents date-line-crossing flights (e.g. ICN→SLC)
+  // from being sorted out of order when their local date in Asia is "ahead" of the
+  // local date of a connecting US flight that departs at an earlier UTC moment.
+  const result = Object.values(grouped).sort((a, b) => a.minUtcMs - b.minUtcMs);
   result.forEach(group => {
-    group.items.sort((a, b) => a.localTime.localeCompare(b.localTime));
+    // Sort within the group by UTC timestamp so that items departing from
+    // different timezones compare correctly (local time strings are not comparable
+    // across timezones — e.g. ICN 19:20 KST is earlier than SLC 17:25 MDT in UTC).
+    group.items.sort((a, b) => a.utcMs - b.utcMs);
     group.items = group.items.map(e => e.item);
   });
   return result;

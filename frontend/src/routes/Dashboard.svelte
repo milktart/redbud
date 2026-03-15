@@ -1179,7 +1179,6 @@
         }
 
         if (item.itemType === 'flight') lastFlight = item;
-        else lastFlight = null;
       }
     }
     return rows;
@@ -1377,10 +1376,8 @@
   }
 
   function onItemEndDateChange(startField, endField) {
-    const end = itemForm[endField];
-    if (end && end < itemForm[startField]) {
-      itemForm[startField] = end;
-    }
+    // Do not snap the departure date backward — flights crossing the international
+    // date line can have a local arrival date that appears earlier than the departure.
   }
 
   function onEditStartDateChange(startField, endField) {
@@ -1391,10 +1388,8 @@
   }
 
   function onEditEndDateChange(startField, endField) {
-    const end = editForm[endField];
-    if (end && end < editForm[startField]) {
-      editForm[startField] = end;
-    }
+    // Do not snap the departure date backward — flights crossing the international
+    // date line can have a local arrival date that appears earlier than the departure.
   }
 
   function onTripStartDateChange() {
