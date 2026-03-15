@@ -1621,8 +1621,6 @@
       bind:activeTimelineTab
       {getAllItemsChronological}
       {buildTripRenderRows}
-      {filterTripsByItemDate}
-      {getItemPrimaryDate}
       onItemClick={handleItemClick}
       onTripClick={handleTripClick}
       onCloseEditForm={closeEditForm}

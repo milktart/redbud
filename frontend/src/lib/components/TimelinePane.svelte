@@ -4,7 +4,7 @@
   import PaneColumn from './PaneColumn.svelte';
   import ItemForm from './ItemForm.svelte';
   import AttendeeManager from './AttendeeManager.svelte';
-  import { getItemIcon, getItemLabel, getFlightDuration, getItemDateTime, formatTime24, formatDate, getTripNights, formatDateGroupHeader, getMonthYear, getAttendeeInitials, sortAttendees } from '../utils/itemHelpers.js';
+  import { getItemIcon, getItemLabel, getFlightDuration, getItemDateTime, formatTime24, formatDate, getTripNights, formatDateGroupHeader, getMonthYear, getAttendeeInitials, sortAttendees, formatTripDateRange } from '../utils/itemHelpers.js';
 
   export let trips = [];
   export let isMobileView = false;
@@ -30,8 +30,6 @@
   // callbacks — data functions (return computed results)
   export let getAllItemsChronological = null; // (tab) => entries[]
   export let buildTripRenderRows = null;      // (itemsByDate, tripId) => rows[]
-  export let filterTripsByItemDate = null;    // (date, tripId) => trips[]
-  export let getItemPrimaryDate = null;       // (form) => string
 
   // callbacks — item actions
   export let onItemClick = null;
@@ -58,6 +56,21 @@
 
   // exported so parent can bind and react to tab changes (e.g. map updates)
   export let activeTimelineTab = 'upcoming';
+
+  $: {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    tripsUpcoming = trips.filter(t => {
+      const end = t.returnDate ? new Date(t.returnDate) : new Date(t.departureDate);
+      return end >= today;
+    });
+    tripsPast = trips.filter(t => {
+      const end = t.returnDate ? new Date(t.returnDate) : new Date(t.departureDate);
+      return end < today;
+    });
+  }
+  let tripsUpcoming = [];
+  let tripsPast = [];
 </script>
 
 <ContentPane columns={(selectedItem || selectedTrip) && !isMobileView ? 2 : 1} mobileTop="30vh">
@@ -234,9 +247,16 @@
             <label for="edit-item-trip">Trip (Optional)</label>
             <select id="edit-item-trip" bind:value={editForm.tripId}>
               <option value="">None (standalone item)</option>
-              {#each (filterTripsByItemDate ? filterTripsByItemDate(getItemPrimaryDate ? getItemPrimaryDate(editForm) : null, editForm.tripId) : trips) as trip}
-                <option value={trip.id}>{trip.purpose === 'business' ? '※ ' : ''}{trip.name}</option>
+              {#each tripsUpcoming as trip}
+                <option value={trip.id}>{trip.purpose === 'business' ? '※ ' : ''}{formatTripDateRange(trip.departureDate, trip.returnDate)} {trip.name}</option>
               {/each}
+              {#if tripsPast.length > 0}
+                <optgroup label="Past Trips">
+                  {#each tripsPast as trip}
+                    <option value={trip.id}>{trip.purpose === 'business' ? '※ ' : ''}{formatTripDateRange(trip.departureDate, trip.returnDate)} {trip.name}</option>
+                  {/each}
+                </optgroup>
+              {/if}
             </select>
           </div>
           <div class="form-group form-group--toggle">
@@ -383,9 +403,16 @@
               <label for="m-edit-item-trip">Trip (Optional)</label>
               <select id="m-edit-item-trip" bind:value={editForm.tripId}>
                 <option value="">None (standalone item)</option>
-                {#each (filterTripsByItemDate ? filterTripsByItemDate(getItemPrimaryDate ? getItemPrimaryDate(editForm) : null, editForm.tripId) : trips) as trip}
-                  <option value={trip.id}>{trip.purpose === 'business' ? '※ ' : ''}{trip.name}</option>
+                {#each tripsUpcoming as trip}
+                  <option value={trip.id}>{trip.purpose === 'business' ? '※ ' : ''}{formatTripDateRange(trip.departureDate, trip.returnDate)} {trip.name}</option>
                 {/each}
+                {#if tripsPast.length > 0}
+                  <optgroup label="Past Trips">
+                    {#each tripsPast as trip}
+                      <option value={trip.id}>{trip.purpose === 'business' ? '※ ' : ''}{formatTripDateRange(trip.departureDate, trip.returnDate)} {trip.name}</option>
+                    {/each}
+                  </optgroup>
+                {/if}
               </select>
             </div>
             <div class="form-group form-group--toggle">

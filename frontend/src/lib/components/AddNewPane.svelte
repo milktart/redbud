@@ -3,6 +3,7 @@
   import PaneColumn from './PaneColumn.svelte';
   import ItemForm from './ItemForm.svelte';
   import AttendeeManager from './AttendeeManager.svelte';
+  import { formatTripDateRange } from '../utils/itemHelpers.js';
 
   // navigation
   export let addNewView = 'menu'; // 'menu' | 'tripForm' | 'itemForm'
@@ -209,7 +210,7 @@
           <select id="item-trip" bind:value={itemForm.tripId}>
             <option value="">None (standalone item)</option>
             {#each (filterTripsByItemDate ? filterTripsByItemDate(getItemPrimaryDate ? getItemPrimaryDate(itemForm) : null, itemForm.tripId) : trips) as trip}
-              <option value={trip.id}>{trip.purpose === 'business' ? '※ ' : ''}{trip.name}</option>
+              <option value={trip.id}>{trip.purpose === 'business' ? '※ ' : ''}{formatTripDateRange(trip.departureDate, trip.returnDate)} {trip.name}</option>
             {/each}
           </select>
         </div>

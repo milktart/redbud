@@ -81,6 +81,22 @@ export function formatDateGroupHeader(dateKey) {
   return `${weekday}, ${day} ${month}`;
 }
 
+export function formatTripDateRange(departureDate, returnDate) {
+  if (!departureDate) return '';
+  const pad = n => String(n).padStart(2, '0');
+  const start = parseDateOnly(departureDate);
+  const startDay = pad(start.getDate());
+  const startMonth = pad(start.getMonth() + 1);
+  if (!returnDate) return `[${startDay}/${startMonth}]`;
+  const end = parseDateOnly(returnDate);
+  const endDay = pad(end.getDate());
+  const endMonth = pad(end.getMonth() + 1);
+  if (startMonth === endMonth) {
+    return `[${startDay}-${endDay}/${startMonth}]`;
+  }
+  return `[${startDay}/${startMonth}-${endDay}/${endMonth}]`;
+}
+
 export function getTripNights(departureDate, returnDate) {
   if (!departureDate || !returnDate) return null;
   const diff = parseDateOnly(returnDate) - parseDateOnly(departureDate);
