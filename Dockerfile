@@ -51,7 +51,7 @@ FROM node:20-alpine AS development
 
 WORKDIR /app
 
-RUN apk add --no-cache git && \
+RUN apk add --no-cache git gcompat chromium && \
     chown -R node:node /app && \
     git config --global --add safe.directory /app
 

@@ -327,3 +327,11 @@ export const companionAPI = {
     return await api.delete(`/companions/${companionUserId}`);
   },
 };
+
+// PNR Import API
+export const pnrAPI = {
+  async lookupPnr(pnr, airline) {
+    const response = await api.post('/pnr/lookup', { pnr, airline });
+    return response.data; // { flights: [...] }
+  },
+};

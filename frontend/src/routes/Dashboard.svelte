@@ -779,6 +779,26 @@
   }
 
 
+  async function handlePnrImport(tripId, flights) {
+    for (const f of flights) {
+      await itemAPI.createItem({
+        itemType: 'flight',
+        tripId,
+        flightNumber: f.flightNumber,
+        airline: f.airline,
+        origin: f.origin,
+        destination: f.destination,
+        departureDate: f.departureDate,
+        departureTime: f.departureTime,
+        arrivalDate: f.arrivalDate,
+        arrivalTime: f.arrivalTime,
+        ...(f.seat ? { seat: f.seat } : {}),
+        pnr: f.pnr,
+      });
+    }
+    await loadTripsAndItems();
+  }
+
   async function loadTripsAndItems() {
     try {
       const response = await tripAPI.getAllTrips();
@@ -1037,7 +1057,7 @@
     user.set(userData);
     isAuthenticated.set(true);
 
-    await Promise.all([loadTripsAndItems(), loadCompanions()]);
+    await Promise.all([loadTripsAndItems(), loadCompanions(), loadLoyaltyPrograms()]);
 
     L = (await import('leaflet')).default;
 
@@ -1638,6 +1658,8 @@
       onAddAttendee={handleAddAttendee}
       onRemoveAttendee={handleRemoveAttendee}
       onSelectAttendeeSuggestion={selectAttendeeSuggestion}
+      {loyaltyPrograms}
+      onPnrImport={(flights) => handlePnrImport(selectedTrip?.id, flights)}
     />
   {/if}
 

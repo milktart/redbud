@@ -72,6 +72,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      MILK_BROWSER: /usr/bin/chromium-browser
     depends_on:
       postgres:
         condition: service_healthy
@@ -81,6 +82,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+      - /usr/local/bin/milk:/usr/local/bin/milk:ro
     networks:
       - redbud_network
 

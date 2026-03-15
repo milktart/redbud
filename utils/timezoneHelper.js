@@ -115,7 +115,13 @@ function localToUTC(datetimeLocal, timezone) {
       return null;
     }
 
-    const [, refYear, refMonth, refDay, refHour, refMinute, refSecond] = match;
+    let [, refYear, refMonth, refDay, refHour, refMinute, refSecond] = match;
+
+    // Some ICU/Node versions emit hour "24" instead of "00" for midnight.
+    // The date part is already correct; only the hour needs normalising to "00".
+    if (refHour === '24') {
+      refHour = '00';
+    }
 
     // Step 3: Compare what the candidate shows in local time vs what we want
     // Both are parsed as UTC so we can do millisecond arithmetic

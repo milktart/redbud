@@ -4,6 +4,7 @@
   import PaneColumn from './PaneColumn.svelte';
   import ItemForm from './ItemForm.svelte';
   import AttendeeManager from './AttendeeManager.svelte';
+  import PnrImportWidget from './PnrImportWidget.svelte';
   import { getItemIcon, getItemLabel, getFlightDuration, getItemDateTime, formatTime24, formatDate, getTripNights, formatDateGroupHeader, getMonthYear, getAttendeeInitials, sortAttendees, formatTripDateRange } from '../utils/itemHelpers.js';
 
   export let trips = [];
@@ -53,6 +54,10 @@
   export let onAddAttendee = null;
   export let onRemoveAttendee = null;
   export let onSelectAttendeeSuggestion = null;
+
+  // PNR import
+  export let loyaltyPrograms = [];
+  export let onPnrImport = null;
 
   // exported so parent can bind and react to tab changes (e.g. map updates)
   export let activeTimelineTab = 'upcoming';
@@ -353,6 +358,11 @@
           </select>
         </div>
 
+        <PnrImportWidget
+          {loyaltyPrograms}
+          onImportFlights={onPnrImport}
+        />
+
         <!-- Attendees section -->
         <AttendeeManager
           mode="edit"
@@ -501,6 +511,10 @@
               <option value="other">Other</option>
             </select>
           </div>
+          <PnrImportWidget
+            {loyaltyPrograms}
+            onImportFlights={onPnrImport}
+          />
           <AttendeeManager
             mode="edit"
             {formAttendees}
