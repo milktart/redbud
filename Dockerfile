@@ -78,7 +78,8 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-RUN chown -R node:node /app
+RUN apk add --no-cache gcompat chromium && \
+    chown -R node:node /app
 
 COPY --from=production-deps --chown=node:node /app/node_modules ./node_modules
 COPY --chown=node:node . .
