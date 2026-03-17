@@ -362,7 +362,17 @@
     font-size: 0.75rem;
     color: transparent;
     -webkit-text-fill-color: transparent;
-    background-image: linear-gradient(to bottom right, #f8717190, #fb923c90, #fbbf2490, #4ade8090, #60a5fa90, #818cf890, #c084fc90);
+    background-image: linear-gradient(130deg,
+      oklch(85% 0.3 0 / .5),
+      oklch(85% 0.3 40 / .5),
+      oklch(85% 0.3 80 / .5),
+      oklch(85% 0.3 120 / .5),
+      oklch(85% 0.3 160 / .5),
+      oklch(85% 0.3 200 / .5),
+      oklch(85% 0.3 240 / .5),
+      oklch(85% 0.3 280 / .5),
+      oklch(85% 0.3 320 / .5),
+      oklch(85% 0.3 360 / .5));
     -webkit-background-clip: text;
     background-clip: text;
   }
@@ -373,7 +383,6 @@
     inset: 0;
     border-radius: 50%;
     padding: 2px;
-    background: linear-gradient(to bottom right, #f8717190, #fb923c90, #fbbf2490, #4ade8090, #60a5fa90, #818cf890, #c084fc90);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
@@ -382,12 +391,21 @@
 
   .companion-filter-btn.companion-filter-selected .feed-avatar {
     background: transparent;
-    background-image: linear-gradient(to bottom right, #f8717190, #fb923c90, #fbbf2490, #4ade8090, #60a5fa90, #818cf890, #c084fc90);
+    background-image: linear-gradient(130deg,
+      oklch(85% 0.3 0 / .5),
+      oklch(85% 0.3 40 / .5),
+      oklch(85% 0.3 80 / .5),
+      oklch(85% 0.3 120 / .5),
+      oklch(85% 0.3 160 / .5),
+      oklch(85% 0.3 200 / .5),
+      oklch(85% 0.3 240 / .5),
+      oklch(85% 0.3 280 / .5),
+      oklch(85% 0.3 320 / .5),
+      oklch(85% 0.3 360 / .5));
     -webkit-background-clip: border-box;
     background-clip: border-box;
     color: white;
     -webkit-text-fill-color: white;
-    text-shadow: 0 0 4px rgba(0,0,0,0.3);
   }
 
   .companion-filter-btn.companion-filter-selected .feed-avatar::before {

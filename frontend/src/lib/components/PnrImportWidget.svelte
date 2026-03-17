@@ -83,10 +83,14 @@
         <input
           class="pnr-widget__input"
           type="text"
-          placeholder="Confirmation code (e.g. F93BMN)"
+          placeholder="PNR"
           bind:value={pnr}
           on:keydown={handleKeydown}
           maxlength="7"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="characters"
+          spellcheck="false"
         />
         <button
           type="button"
@@ -169,10 +173,12 @@
   .pnr-widget__input-row {
     display: flex;
     gap: var(--spacing-xs);
+    min-width: 0;
   }
 
   .pnr-widget__input {
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 0;
     padding: 0.35rem 0.6rem;
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);

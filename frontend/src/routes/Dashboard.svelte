@@ -1628,7 +1628,7 @@
       {editTripForm}
       {formAttendees}
       {formAttendeesLoading}
-      {attendeeEmailInput}
+      bind:attendeeEmailInput
       {attendeeSuggestions}
       {attendeeSuggestionsLoading}
       {attendeeAddLoading}
@@ -1679,7 +1679,7 @@
       {trips}
       {itemForm}
       {pendingAttendees}
-      {attendeeEmailInput}
+      bind:attendeeEmailInput
       {attendeeSuggestions}
       {attendeeSuggestionsLoading}
       {attendeeAddError}

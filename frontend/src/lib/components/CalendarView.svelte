@@ -717,10 +717,17 @@
   }
 
   .event-bar.color-external {
-    background:
-      linear-gradient(#FFFFFF90, #FFFFFF90) padding-box,
-      linear-gradient(to bottom right, #f87171, #fb923c, #fbbf24, #4ade80, #60a5fa, #818cf8, #c084fc) border-box;
-    border: 1px solid transparent;
+    background: linear-gradient(130deg,
+      oklch(85% 0.3 0 / .5),
+      oklch(85% 0.3 40 / .5),
+      oklch(85% 0.3 80 / .5),
+      oklch(85% 0.3 120 / .5),
+      oklch(85% 0.3 160 / .5),
+      oklch(85% 0.3 200 / .5),
+      oklch(85% 0.3 240 / .5),
+      oklch(85% 0.3 280 / .5),
+      oklch(85% 0.3 320 / .5),
+      oklch(85% 0.3 360 / .5));
     color: #111;
   }
 
