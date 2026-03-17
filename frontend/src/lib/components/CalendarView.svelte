@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { extractAirportCode } from '../utils/itemHelpers.js';
 
   export let trips = [];
   export let standaloneItems = [];
@@ -247,7 +248,7 @@
   function getItemLabel(item) {
     switch (item.itemType) {
       case 'flight':
-        return `${item.origin || ''} → ${item.destination || ''}`.trim() || 'Flight';
+        return `${extractAirportCode(item.origin)} → ${extractAirportCode(item.destination)}`;
       case 'hotel':
         return item.hotelName || 'Hotel';
       case 'transportation':
