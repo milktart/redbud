@@ -857,11 +857,14 @@
     const currentUserId = $user?.id;
     const isAttendeeOnItem = (item) =>
       Array.isArray(item.attendees) && item.attendees.some(a => String(a.userId) === String(currentUserId));
+    // In the shared pane, entries already come from friends' trips so the attendee
+    // check is not applicable — show all their items on the map.
+    const skipAttendeeCheck = activePane === 'shared';
     for (const entry of timelineEntries) {
       if (entry.type === 'trip' && visibleItemTypes.trip !== false) {
         for (const dateGroup of (entry.itemsByDate || [])) {
           for (const item of (dateGroup.items || [])) {
-            if (!seenMapIds.has(item.id) && visibleItemTypes[item.itemType] !== false && isAttendeeOnItem(item)) {
+            if (!seenMapIds.has(item.id) && visibleItemTypes[item.itemType] !== false && (skipAttendeeCheck || isAttendeeOnItem(item))) {
               seenMapIds.add(item.id);
               filteredItems.push(item);
             }
