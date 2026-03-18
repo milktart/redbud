@@ -5,6 +5,7 @@
  * Attendees are users associated with specific trips/items with local permissions.
  */
 
+const { Op } = require('sequelize');
 const AttendeeService = require('../services/AttendeeService');
 const { User } = require('../models');
 const apiResponse = require('../utils/apiResponse');
@@ -182,10 +183,43 @@ exports.removeAttendee = async (req, res) => {
       return apiResponse.notFound(res, 'Item not found');
     }
 
-    // Creator can only be removed from trip items (not from trips or standalone items)
     const isTripItem = itemType !== 'trip' && item.tripId != null;
-    if (!isTripItem && item.createdBy === attendee.userId) {
-      return apiResponse.forbidden(res, 'Cannot remove the creator as an attendee');
+    const isSelfRemoval = attendee.userId === currentUserId;
+
+    if (itemType === ITEM_TYPES.TRIP && isSelfRemoval) {
+      // Allow self-removal from a trip if:
+      //   1. At least one other attendee will remain on the trip
+      //   2. The user is not the sole attendee on any item within the trip
+      const remainingTripAttendees = await Attendee.count({
+        where: { itemType: ITEM_TYPES.TRIP, itemId, userId: { [Op.ne]: attendee.userId } },
+      });
+      if (remainingTripAttendees === 0) {
+        return apiResponse.forbidden(res, 'Cannot remove yourself — at least one other traveler must remain on the trip');
+      }
+
+      // Check each item type: if user is the only attendee on any item, block removal
+      const itemModels = [
+        { model: Flight, type: ITEM_TYPES.FLIGHT },
+        { model: Hotel, type: ITEM_TYPES.HOTEL },
+        { model: Event, type: ITEM_TYPES.EVENT },
+        { model: Transportation, type: ITEM_TYPES.TRANSPORTATION },
+        { model: CarRental, type: ITEM_TYPES.CAR_RENTAL },
+      ];
+      for (const { model, type } of itemModels) {
+        const tripItems = await model.findAll({ where: { tripId: itemId }, attributes: ['id'], raw: true });
+        for (const tripItem of tripItems) {
+          const totalAttendees = await Attendee.count({ where: { itemType: type, itemId: tripItem.id } });
+          const myAttendance = await Attendee.count({ where: { itemType: type, itemId: tripItem.id, userId: attendee.userId } });
+          if (myAttendance > 0 && totalAttendees === 1) {
+            return apiResponse.forbidden(res, 'Cannot remove yourself — you are the only traveler on one or more items in this trip');
+          }
+        }
+      }
+    } else {
+      // Creator cannot be removed from a standalone item or from the trip itself (unless self-removal handled above)
+      if (!isTripItem && item.createdBy === attendee.userId) {
+        return apiResponse.forbidden(res, 'Cannot remove the creator as an attendee');
+      }
     }
 
     // Can remove if: you are the creator/owner of the parent context, or you are removing yourself

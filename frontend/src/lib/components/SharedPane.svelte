@@ -2,6 +2,8 @@
   import ContentPane from './ContentPane.svelte';
   import PaneColumn from './PaneColumn.svelte';
   import ItemTypeFilterStrip from './ItemTypeFilterStrip.svelte';
+  import AttendeeManager from './AttendeeManager.svelte';
+  import PnrImportWidget from './PnrImportWidget.svelte';
   import { getItemIcon, getItemLabel, getFlightDuration, getItemDateTime, formatTime24, formatDate, getTripNights, formatDateGroupHeader, getMonthYear, getOwnerName } from '../utils/itemHelpers.js';
 
   export let friendsTrips = [];
@@ -14,6 +16,28 @@
   // callbacks
   export let onToggleItemType = null; // (type) => void
   export let getFriendsTimelineEntries = null; // (Set) => entries[]
+  export let onTripClick = null; // (trip) => void — called when a trip card is clicked
+
+  // trip edit form (only shown for trips the current user created)
+  export let selectedTrip = null;
+  export let editTripForm = {};
+  export let formAttendees = [];
+  export let formAttendeesLoading = false;
+  export let attendeeEmailInput = '';
+  export let attendeeSuggestions = [];
+  export let attendeeSuggestionsLoading = false;
+  export let attendeeAddLoading = false;
+  export let attendeeAddError = '';
+  export let loyaltyPrograms = [];
+  export let onCloseTripEditForm = null;
+  export let onUpdateTrip = null;
+  export let onDeleteTrip = null;
+  export let onAttendeeInput = null;
+  export let onDismissSuggestions = null;
+  export let onAddAttendee = null;
+  export let onRemoveAttendee = null;
+  export let onSelectAttendeeSuggestion = null;
+  export let onPnrImport = null;
 
   // filter pane/sheet toggle: local to this component
   let showFriendsFilterPane = false;
@@ -23,6 +47,8 @@
 
   $: sharingFriendsCompanions = companions.filter(c => c.reversePermissionLevel && c.reversePermissionLevel !== 'none');
   $: showFriendsFilter = !isMobileView && showFriendsFilterPane;
+  $: showEditColumn = !!selectedTrip && !isMobileView;
+  $: columnCount = (showFriendsFilter ? 1 : 0) + 1 + (showEditColumn ? 1 : 0);
 
   function toggleFriendsCompanion(uid) {
     const next = new Set(selectedFriendsCompanionIds);
@@ -31,7 +57,7 @@
   }
 </script>
 
-<ContentPane columns={showFriendsFilter ? 2 : 1} mobileTop="30vh">
+<ContentPane columns={columnCount} mobileTop="30vh">
   <!-- Filter column — desktop only -->
   {#if showFriendsFilter}
     <PaneColumn span={1}>
@@ -98,7 +124,15 @@
               <div class="month-header">{thisMonth}</div>
             {/if}
             {#if entry.type === 'trip'}
-              <div class="trip-card" class:tentative={entry.trip.isConfirmed === false}>
+              <div
+                class="trip-card"
+                class:tentative={entry.trip.isConfirmed === false}
+                class:trip-card-clickable={!!onTripClick}
+                on:click={() => onTripClick && onTripClick(entry.trip)}
+                role={onTripClick ? 'button' : 'presentation'}
+                tabindex={onTripClick ? 0 : undefined}
+                on:keydown={e => e.key === 'Enter' && onTripClick && onTripClick(entry.trip)}
+              >
                 <div class="trip-header" role="presentation">
                   <span class="trip-name">{entry.trip.name}</span>
                   <span class="trip-dates">
@@ -179,6 +213,87 @@
       {/if}
     {/key}
   </PaneColumn>
+
+  {#if showEditColumn}
+    <PaneColumn span={1} divider={true}>
+      <div class="edit-header">
+        <h3 class="pane-title">Edit Trip</h3>
+        <button class="close-button" on:click={onCloseTripEditForm} aria-label="Close">×</button>
+      </div>
+      <form class="edit-form" on:submit={onUpdateTrip}>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="shared-edit-trip-name">Trip Name</label>
+            <input type="text" id="shared-edit-trip-name" bind:value={editTripForm.name} placeholder="e.g., Summer Vacation" required />
+          </div>
+          <div class="form-group form-group--toggle">
+            <label>Status</label>
+            <label class="toggle-switch" title={editTripForm.status === 'confirmed' ? 'Confirmed' : 'Tentative'}>
+              <input type="checkbox" checked={editTripForm.status === 'confirmed'} on:change={(e) => { editTripForm.status = e.target.checked ? 'confirmed' : 'tentative'; }} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group form-group--half">
+            <label for="shared-edit-trip-departure">Departure Date</label>
+            <input type="date" id="shared-edit-trip-departure" bind:value={editTripForm.departureDate} required />
+          </div>
+          <div class="form-group form-group--half">
+            <label for="shared-edit-trip-return">Return Date</label>
+            <input type="date" id="shared-edit-trip-return" bind:value={editTripForm.returnDate} />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="shared-edit-trip-purpose">Purpose</label>
+          <select id="shared-edit-trip-purpose" bind:value={editTripForm.purpose}>
+            <option value="business">Business</option>
+            <option value="leisure">Leisure</option>
+            <option value="family">Family</option>
+            <option value="romantic">Romantic</option>
+            <option value="adventure">Adventure</option>
+            <option value="pleasure">Pleasure</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <PnrImportWidget
+          {loyaltyPrograms}
+          onImportFlights={onPnrImport}
+        />
+
+        <AttendeeManager
+          mode="edit"
+          {formAttendees}
+          {formAttendeesLoading}
+          itemType="trip"
+          itemId={selectedTrip.id}
+          createdBy={selectedTrip.createdBy}
+          isTripItem={false}
+          bind:attendeeEmailInput
+          {attendeeSuggestions}
+          {attendeeSuggestionsLoading}
+          {attendeeAddLoading}
+          {attendeeAddError}
+          onInput={onAttendeeInput}
+          onDismissSuggestions={onDismissSuggestions}
+          onAddAttendee={onAddAttendee}
+          onRemoveAttendee={onRemoveAttendee}
+          onSelectSuggestion={onSelectAttendeeSuggestion}
+        />
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" on:click={onCloseTripEditForm}>Cancel</button>
+          <button type="submit" class="btn-primary">Update</button>
+        </div>
+        <div class="form-actions-remove">
+          <button type="button" class="btn-danger-outline" on:click={() => onDeleteTrip && onDeleteTrip(selectedTrip.id)}>Remove</button>
+        </div>
+      </form>
+    </PaneColumn>
+  {/if}
 </ContentPane>
 
 <!-- Mobile friends filter bottom sheet -->
@@ -367,6 +482,13 @@
     border: 1px solid var(--glass-border-dark);
     overflow: hidden;
     padding: var(--spacing-xs);
+  }
+
+  .trip-card.trip-card-clickable {
+    cursor: pointer;
+  }
+  .trip-card.trip-card-clickable:hover {
+    border-color: var(--glass-border-light, rgba(255,255,255,0.2));
   }
 
   .trip-card.tentative {

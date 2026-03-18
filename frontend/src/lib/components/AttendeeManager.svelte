@@ -49,7 +49,7 @@
         {#each formAttendees as att (att.id)}
           <span class="attendee-chip">
             <span class="attendee-chip-name">{att.user?.firstName || att.user?.email || 'Unknown'}</span>
-            {#if formAttendees.length > 1 && (isTripItem || att.user?.id !== createdBy)}
+            {#if formAttendees.length > 1 && (isTripItem || itemType === 'trip' || att.user?.id !== createdBy)}
               <button
                 type="button"
                 class="attendee-chip-remove"

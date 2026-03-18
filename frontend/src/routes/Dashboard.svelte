@@ -854,11 +854,14 @@
       : getAllItemsChronological();
     const seenMapIds = new Set();
     const filteredItems = [];
+    const currentUserId = $user?.id;
+    const isAttendeeOnItem = (item) =>
+      Array.isArray(item.attendees) && item.attendees.some(a => String(a.userId) === String(currentUserId));
     for (const entry of timelineEntries) {
       if (entry.type === 'trip' && visibleItemTypes.trip !== false) {
         for (const dateGroup of (entry.itemsByDate || [])) {
           for (const item of (dateGroup.items || [])) {
-            if (!seenMapIds.has(item.id) && visibleItemTypes[item.itemType] !== false) {
+            if (!seenMapIds.has(item.id) && visibleItemTypes[item.itemType] !== false && isAttendeeOnItem(item)) {
               seenMapIds.add(item.id);
               filteredItems.push(item);
             }
@@ -1297,10 +1300,16 @@
     const entries = [];
 
     // Add all trips not owned by me: companion-shared + attendee trips
+    // Also include owned trips where I removed myself as an attendee (created on behalf of others).
     const allFriendTrips = [
       ...friendsTrips,
       ...trips.filter(t => t.isShared),
-    ].filter(t => !filterIds || !filterIds.size || (t.user && filterIds.has(t.user.id)));
+    ].filter(t => {
+      if (!filterIds || !filterIds.size) return true;
+      // Self-removed owned trips (owner === current user) always show regardless of companion filter
+      if (t.user && String(t.user.id) === String($user?.id)) return true;
+      return t.user && filterIds.has(t.user.id);
+    });
     const seenTripIds = new Set();
     for (const trip of allFriendTrips) {
       if (seenTripIds.has(trip.id)) continue;
@@ -1496,6 +1505,13 @@
     openAttendeeContext('trip', trip.id);
   }
 
+  // Called from SharedPane when a trip card is clicked.
+  // Only the creator of the trip can edit it; open the edit form within the shared pane.
+  function handleFriendsTripClick(trip) {
+    if (String(trip.createdBy) !== String($user?.id)) return;
+    handleTripClick(trip);
+  }
+
   function closeTripEditForm() {
     selectedTrip = null;
     editTripForm = {};
@@ -1669,6 +1685,26 @@
       onToggleItemType={toggleVisibleItemType}
       {getFriendsTimelineEntries}
       bind:selectedFriendsCompanionIds
+      onTripClick={handleFriendsTripClick}
+      {selectedTrip}
+      {editTripForm}
+      {formAttendees}
+      {formAttendeesLoading}
+      bind:attendeeEmailInput
+      {attendeeSuggestions}
+      {attendeeSuggestionsLoading}
+      {attendeeAddLoading}
+      {attendeeAddError}
+      {loyaltyPrograms}
+      onCloseTripEditForm={closeTripEditForm}
+      onUpdateTrip={handleUpdateTrip}
+      onDeleteTrip={handleDeleteTrip}
+      onAttendeeInput={onAttendeeInput}
+      onDismissSuggestions={dismissAttendeeSuggestions}
+      onAddAttendee={handleAddAttendee}
+      onRemoveAttendee={handleRemoveAttendee}
+      onSelectAttendeeSuggestion={selectAttendeeSuggestion}
+      onPnrImport={(flights) => handlePnrImport(selectedTrip?.id, flights)}
     />
   {/if}
 

@@ -49,17 +49,30 @@ exports.getUserTrips = async (req, res) => {
     });
 
     // My trips: owned + attendee (explicitly added to)
+    // Owned trips where the user has removed themselves as an attendee are treated
+    // as "created on behalf of others" and shown in Friends Trips instead.
     const myTripIds = new Set();
     const trips = [];
+    const selfRemovedOwnedTrips = [];
+    const currentUserId = req.user.id;
     for (const trip of [...enriched.ownedTrips, ...enriched.attendeeTrips]) {
       if (!myTripIds.has(trip.id)) {
         myTripIds.add(trip.id);
-        trips.push(trip);
+        const isAttendee = (trip.attendees || []).some(a => String(a.userId) === String(currentUserId));
+        if (!isAttendee && enriched.ownedTrips.some(t => t.id === trip.id)) {
+          // Owner removed themselves — show in Friends Trips
+          selfRemovedOwnedTrips.push(trip);
+        } else {
+          trips.push(trip);
+        }
       }
     }
 
-    // Friends trips: companion-shared only (not attendee)
-    const friendsTrips = enriched.companionTrips.filter(t => !myTripIds.has(t.id));
+    // Friends trips: companion-shared + owned trips where user removed themselves
+    const friendsTrips = [
+      ...enriched.companionTrips.filter(t => !myTripIds.has(t.id)),
+      ...selfRemovedOwnedTrips,
+    ];
 
     // If past trips with pagination, return paginated response
     if (filter === 'past' && enriched.pagination.totalPages > 1) {
