@@ -6,6 +6,7 @@
 const TravelItemService = require('./TravelItemService');
 const logger = require('../utils/logger');
 const geocodingService = require('./geocodingService');
+const DateTimeService = require('./DateTimeService');
 
 class EventService extends TravelItemService {
   constructor(Event) {
@@ -18,14 +19,36 @@ class EventService extends TravelItemService {
    */
   async prepareEventData(data) {
     try {
-      return await this.prepareItemData(data, {
-        datePairs: ['start', 'end'],
-        timezoneFields: ['locationTimezone'],
-        locationFields: ['location'],
-        geocodeService: geocodingService,
-        dateTimeFields: ['startDateTime', 'endDateTime'],
-        tzPairs: ['locationTimezone', 'locationTimezone'],
-      });
+      // Step 1: Combine date/time fields into datetimes
+      let processed = DateTimeService.combineDateTimeFields(data, ['start', 'end']);
+
+      // Step 2: Sanitize timezone fields
+      processed = DateTimeService.sanitizeTimezones(processed, ['startTimezone', 'endTimezone']);
+
+      // Step 3: Geocode location (no airport lookup — events are venues/addresses)
+      if (processed.location) {
+        const coords = await geocodingService.geocodeLocation(processed.location);
+        if (coords) {
+          processed.lat = coords.lat;
+          processed.lng = coords.lng;
+        }
+      }
+
+      // Step 4: Convert datetimes to UTC using event's timezone
+      if (processed.startDateTime) {
+        processed.startDateTime = DateTimeService.convertToUTC(
+          processed.startDateTime,
+          processed.startTimezone
+        );
+      }
+      if (processed.endDateTime) {
+        processed.endDateTime = DateTimeService.convertToUTC(
+          processed.endDateTime,
+          processed.startTimezone
+        );
+      }
+
+      return processed;
     } catch (error) {
       logger.error('Error preparing event data:', error);
       throw error;
