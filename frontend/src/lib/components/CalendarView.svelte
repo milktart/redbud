@@ -498,7 +498,7 @@
                     }
                   }}
                 >
-                  <span class="event-bar-text">{bar.name}</span>
+                  <span class="event-bar-text">{#if bar.data?.has_dark_room || bar.data?.tags?.includes('Darkroom')}<span class="material-symbols-outlined bar-icon">blur_on</span>{/if}{bar.name}</span>
                 </div>
               {/each}
             </div>
@@ -661,6 +661,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+  }
+
+  .bar-icon {
+    font-size: 11px;
+    vertical-align: middle;
+    margin-right: 2px;
+    line-height: 1;
   }
 
   .event-bar.expanded .event-bar-text {

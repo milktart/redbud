@@ -64,7 +64,7 @@
       return {
         id: `ext-${feedId}-${evt._id || Math.random()}`,
         type: 'external',
-        name: evt.party_name || evt.name || evt.title || 'Community Event',
+        name: evt.event_title || evt.party_name || evt.name || evt.title || 'Community Event',
         startDate,
         endDate,
         colorClass: 'color-external',
@@ -74,6 +74,8 @@
       };
     }).filter(e => {
       if (!e.startDate) return false;
+      if (e.data.status !== 'approved') return false;
+      if (e.data.has_dark_room === true) return true;
       const tags = e.data.tags;
       if (tags && tags.some(t => EXCLUDED_TAGS.has(t))) return false;
       if (!tags || tags.length === 0) return true;
