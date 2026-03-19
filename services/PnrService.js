@@ -1,8 +1,13 @@
 const { spawn } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const LoyaltyService = require('./LoyaltyService');
 const logger = require('../utils/logger');
 
 const loyaltyService = new LoyaltyService();
+
+const MILK_BOOKINGS_PATH = path.join(os.homedir(), '.config', 'milk', 'flights', 'bookings.json');
 
 class PnrService {
   /**
@@ -37,17 +42,27 @@ class PnrService {
   }
 
   /**
-   * Spawn `milk flights --pull <PNR> <LASTNAME/FIRSTNAME>` and return raw stdout.
+   * Check whether a PNR is already saved in milk's bookings list.
+   * If it is, --refresh will reuse the cached session headers (no browser re-auth).
+   */
+  isPnrSaved(pnr) {
+    try {
+      const bookings = JSON.parse(fs.readFileSync(MILK_BOOKINGS_PATH, 'utf8'));
+      return bookings.some(b => b.pnrs?.includes(pnr.toUpperCase()));
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Spawn a milk flights command and return stdout.
    * Times out after 90 seconds (headless browser session capture can be slow).
    */
-  runMilkPull(pnr, lastName, firstName) {
+  runMilk(args) {
     return new Promise((resolve, reject) => {
-      const nameArg = `${lastName.toUpperCase()}/${firstName.toUpperCase()}`;
-      logger.info('PNR_LOOKUP_SPAWN', { pnr, nameArg });
+      logger.info('PNR_LOOKUP_SPAWN', { args });
 
-      const proc = spawn('milk', ['flights', '--pull', pnr.toUpperCase(), nameArg], {
-        timeout: 90000,
-      });
+      const proc = spawn('milk', ['flights', ...args], { timeout: 90000 });
 
       let stdout = '';
       let stderr = '';
@@ -74,7 +89,31 @@ class PnrService {
   }
 
   /**
-   * Parse stdout from `milk flights --pull` into structured flight objects.
+   * Fetch fresh flight data for a PNR, reusing the cached auth session when available.
+   *
+   * Strategy:
+   *   - If the PNR is already saved in bookings, use `--refresh PNR` which reuses
+   *     the cached session headers — no browser re-authentication needed.
+   *   - Otherwise, use `--add PNR NAME` to do the initial auth + save the session
+   *     headers, then `--refresh PNR` to get the formatted output with fresh data.
+   *
+   * This avoids the full headless browser auth flow on every lookup after the first.
+   */
+  async fetchPnr(pnr, lastName, firstName) {
+    const pnrUpper = pnr.toUpperCase();
+
+    if (!this.isPnrSaved(pnrUpper)) {
+      // First time: --add does browser auth, saves PNR + session headers to cache
+      const nameArg = `${lastName.toUpperCase()}/${firstName.toUpperCase()}`;
+      await this.runMilk(['--add', pnrUpper, nameArg]);
+    }
+
+    // --refresh reuses cached session headers; no browser needed on subsequent calls
+    return this.runMilk(['--refresh', pnrUpper]);
+  }
+
+  /**
+   * Parse stdout from `milk flights --refresh` into structured flight objects.
    *
    * The milk binary outputs a fixed-width table with ANSI escape codes:
    *   PNR     FLT     ORG  DST  DEP              ARR              PAX   SEAT  CLS    A/C  STATUS  MI
@@ -187,12 +226,12 @@ class PnrService {
   }
 
   /**
-   * Full lookup: find loyalty account → spawn milk → parse output.
-   * This is the single method the controller calls.
+   * Full lookup: find loyalty account → fetch via milk (reusing auth token when cached)
+   * → parse output. This is the single method the controller calls.
    */
   async lookup(userId, pnr, airline) {
     const { firstName, lastName } = await this.findLoyaltyAccount(userId, airline);
-    const stdout = await this.runMilkPull(pnr, lastName, firstName);
+    const stdout = await this.fetchPnr(pnr, lastName, firstName);
     return this.parseMilkOutput(stdout, pnr);
   }
 }
