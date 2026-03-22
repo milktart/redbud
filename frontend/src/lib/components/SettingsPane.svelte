@@ -374,7 +374,7 @@
   $: filteredAdminAirports = adminAirportSearch.trim().length >= 1
     ? adminAirports.filter(a => {
         const q = adminAirportSearch.trim().toLowerCase();
-        return a.iata?.toLowerCase().includes(q) || a.name?.toLowerCase().includes(q) || a.city?.toLowerCase().includes(q);
+        return a.iata?.toLowerCase().includes(q) || a.name?.toLowerCase().includes(q) || a.city?.toLowerCase().includes(q) || a.country?.toLowerCase().includes(q);
       })
     : adminAirports;
 
@@ -1169,18 +1169,17 @@
         <p class="companions-error">{adminAirportsError}</p>
       {:else}
         <div class="admin-search-row">
-          <input class="admin-search-input" type="text" placeholder="Search IATA, name, or city..." bind:value={adminAirportSearch} />
+          <input class="admin-search-input" type="text" placeholder="Search IATA, name, city, or country..." bind:value={adminAirportSearch} />
           <span class="admin-search-count">{filteredAdminAirports.length} / {adminAirports.length}</span>
         </div>
         <div class="companions-table-wrapper">
-          <table class="companions-table">
+          <table class="companions-table airports-table">
             <thead>
               <tr>
                 <th>IATA</th>
-                <th>Name</th>
-                <th>City</th>
-                <th>Country</th>
-                <th>Timezone</th>
+                <th class="col-airport-text">Name</th>
+                <th class="col-airport-text">City</th>
+                <th class="col-airport-text">Country</th>
                 <th class="col-actions"></th>
               </tr>
             </thead>
@@ -1188,10 +1187,9 @@
               {#each filteredAdminAirports as airport (airport.iata)}
                 <tr class="companion-row" class:selected={editingAirport?.iata === airport.iata}>
                   <td><code>{airport.iata}</code></td>
-                  <td>{airport.name}</td>
-                  <td>{airport.city}</td>
-                  <td>{airport.country}</td>
-                  <td class="admin-tz-cell">{airport.timezone ?? '—'}</td>
+                  <td class="col-airport-text">{airport.name}</td>
+                  <td class="col-airport-text">{airport.city}</td>
+                  <td class="col-airport-text">{airport.country}</td>
                   <td class="col-actions">
                     <button class="companion-edit-btn" class:active={editingAirport?.iata === airport.iata} on:click={() => editingAirport?.iata === airport.iata ? closeEditAirport() : openEditAirport(airport)} aria-label="Edit airport">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2058,7 +2056,7 @@
           <p class="companions-empty">Loading...</p>
         {:else}
           <div class="admin-search-row">
-            <input class="admin-search-input" type="text" placeholder="Search IATA, name, or city..." bind:value={adminAirportSearch} />
+            <input class="admin-search-input" type="text" placeholder="Search IATA, name, city, or country..." bind:value={adminAirportSearch} />
           </div>
           <div class="companions-table-wrapper">
             <table class="companions-table">
@@ -2066,7 +2064,6 @@
                 <tr>
                   <th>IATA</th>
                   <th>Name</th>
-                  <th>Timezone</th>
                   <th></th>
                 </tr>
               </thead>
@@ -2075,7 +2072,6 @@
                   <tr>
                     <td><code>{airport.iata}</code></td>
                     <td>{airport.name}</td>
-                    <td class="admin-tz-cell">{airport.timezone ?? '—'}</td>
                     <td>
                       <button class="companion-edit-btn" class:active={editingAirport?.iata === airport.iata} on:click={() => editingAirport?.iata === airport.iata ? closeEditAirport() : openEditAirport(airport)}>Edit</button>
                     </td>
@@ -2889,17 +2885,26 @@
 
   .admin-search-input {
     flex: 1;
-    padding: var(--spacing-xs) var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
     border: 1px solid var(--glass-border-dark);
     border-radius: var(--radius-md);
     font-size: 0.85rem;
     background: var(--glass-bg-medium);
     color: var(--dark-text);
+    font-family: inherit;
+    transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+    box-sizing: border-box;
+  }
+
+  .admin-search-input::placeholder {
+    color: var(--gray-light);
   }
 
   .admin-search-input:focus {
     outline: none;
     border-color: var(--primary-color);
+    background: var(--white);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
   }
 
   .admin-search-count {
@@ -2911,6 +2916,23 @@
   .admin-tz-cell {
     font-size: 0.78rem;
     color: var(--grey-600);
+  }
+
+  .airports-table {
+    table-layout: fixed;
+  }
+
+  .airports-table th:first-child,
+  .airports-table td:first-child {
+    width: 3.5rem;
+    white-space: nowrap;
+  }
+
+  .airports-table .col-airport-text {
+    width: calc((100% - 3.5rem - 36px) / 3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .companions-add-inline-btn--danger {
