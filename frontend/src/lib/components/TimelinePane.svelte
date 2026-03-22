@@ -45,8 +45,10 @@
 
   // callbacks — item form
   export let onEditFlightNumberInput = null;
+  export let onEditFlightNumberBlur = null;
   export let onEditStartDateChange = null;
   export let onEditEndDateChange = null;
+  export let flightLookupLoading = false;
 
   // callbacks — attendees
   export let onAttendeeInput = null;
@@ -277,8 +279,10 @@
           form={editForm}
           idPrefix="edit-"
           onFlightNumberInput={onEditFlightNumberInput}
+          onFlightNumberBlur={onEditFlightNumberBlur}
           onStartDateChange={onEditStartDateChange}
           onEndDateChange={onEditEndDateChange}
+          {flightLookupLoading}
         />
         <!-- Attendees section -->
         <AttendeeManager
@@ -437,8 +441,10 @@
             form={editForm}
             idPrefix="m-edit-"
             onFlightNumberInput={onEditFlightNumberInput}
+            onFlightNumberBlur={onEditFlightNumberBlur}
             onStartDateChange={onEditStartDateChange}
             onEndDateChange={onEditEndDateChange}
+            {flightLookupLoading}
           />
           <!-- Attendees -->
           <AttendeeManager

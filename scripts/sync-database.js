@@ -210,6 +210,11 @@ async function createEnumTables() {
 
 async function applySchemaPatches() {
   await sequelize.query(`
+    ALTER TABLE "flights"
+      ADD COLUMN IF NOT EXISTS "flightLookupId" UUID
+        REFERENCES flight_lookups(id) ON UPDATE CASCADE ON DELETE SET NULL;
+  `);
+  await sequelize.query(`
     ALTER TABLE "loyalty_programs"
       ADD COLUMN IF NOT EXISTS "accountFirstName" VARCHAR(255) DEFAULT NULL;
   `);

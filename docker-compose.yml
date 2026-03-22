@@ -73,6 +73,7 @@ services:
       REDIS_PORT: 6379
       LOG_LEVEL: ${LOG_LEVEL:-info}
       MILK_BROWSER: /usr/bin/chromium-browser
+      RAPIDAPI_KEY: ${RAPIDAPI_KEY}
     depends_on:
       postgres:
         condition: service_healthy

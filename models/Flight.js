@@ -90,6 +90,12 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      flightLookupId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: { model: 'flight_lookups', key: 'id' },
+        comment: 'Links to FlightLookup cache. Null = manual entry.',
+      },
     },
     {
       tableName: 'flights',
@@ -133,6 +139,12 @@ module.exports = (sequelize, DataTypes) => {
       },
       as: 'attendees',
       onDelete: 'CASCADE',
+    });
+
+    Flight.belongsTo(models.FlightLookup, {
+      foreignKey: 'flightLookupId',
+      as: 'flightLookup',
+      constraints: false,
     });
   };
 

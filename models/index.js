@@ -14,6 +14,7 @@ db.sequelize = sequelize;
 // Import models
 db.User = require('./User')(sequelize, Sequelize);
 db.Trip = require('./Trip')(sequelize, Sequelize);
+db.FlightLookup = require('./FlightLookup')(sequelize, Sequelize);
 db.Flight = require('./Flight')(sequelize, Sequelize);
 db.Hotel = require('./Hotel')(sequelize, Sequelize);
 db.Transportation = require('./Transportation')(sequelize, Sequelize);

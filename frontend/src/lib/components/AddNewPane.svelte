@@ -35,8 +35,10 @@
   // callbacks — item form
   export let onCreateItem = null;
   export let onItemFlightNumberInput = null;
+  export let onItemFlightNumberBlur = null;
   export let onItemStartDateChange = null;
   export let onItemEndDateChange = null;
+  export let flightLookupLoading = false;
   export let filterTripsByItemDate = null;
   export let getItemPrimaryDate = null;
 
@@ -227,8 +229,10 @@
         form={itemForm}
         idPrefix=""
         onFlightNumberInput={onItemFlightNumberInput}
+        onFlightNumberBlur={onItemFlightNumberBlur}
         onStartDateChange={onItemStartDateChange}
         onEndDateChange={onItemEndDateChange}
+        {flightLookupLoading}
       />
 
       <!-- Attendees section -->

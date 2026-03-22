@@ -16,8 +16,10 @@
   export let form = {};
   export let idPrefix = '';
   export let onFlightNumberInput = null;
+  export let onFlightNumberBlur = null;
   export let onStartDateChange = null;
   export let onEndDateChange = null;
+  export let flightLookupLoading = false;
 </script>
 
 <!-- Flight Form -->
@@ -30,6 +32,7 @@
         id="{idPrefix}flight-number"
         value={form.flightNumber}
         on:input={onFlightNumberInput}
+        on:blur={onFlightNumberBlur}
         placeholder="e.g., AA100"
         required
       />
@@ -39,6 +42,10 @@
       <input type="text" id="{idPrefix}airline" value={form.airline} placeholder="Auto-populated" disabled />
     </div>
   </div>
+
+  {#if flightLookupLoading}
+    <p class="flight-lookup-hint">Looking up flight details…</p>
+  {/if}
 
   <div class="form-row">
     <div class="form-group">
@@ -455,3 +462,11 @@
     <input type="text" id="{idPrefix}car-confirmation" bind:value={form.confirmationNumber} placeholder="Reservation number" />
   </div>
 {/if}
+
+<style>
+  .flight-lookup-hint {
+    font-size: 0.8rem;
+    color: var(--color-text-muted, #888);
+    margin: -4px 0 8px;
+  }
+</style>

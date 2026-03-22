@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { navigate } from 'svelte-routing';
-  import { authAPI, tripAPI, itemAPI, attendeeAPI, companionAPI, usersAPI, loyaltyAPI } from '../lib/services/api';
+  import { authAPI, tripAPI, itemAPI, attendeeAPI, companionAPI, usersAPI, loyaltyAPI, flightLookupAPI } from '../lib/services/api';
   import { lookupAirline } from '../lib/data/airlines.js';
   import { user, isAuthenticated } from '../lib/stores/user';
   import DeleteModal from '../lib/components/DeleteModal.svelte';
@@ -596,8 +596,31 @@
     dropoffTime: ''
   };
 
+  let flightLookupLoading = false;
 
+  async function autofillFlight(form, flightNumber, date, isEdit = false) {
+    if (!flightNumber || !/^[A-Z]{2}\d{1,4}$/i.test(flightNumber)) return;
+    if (!date) return;
 
+    flightLookupLoading = true;
+    try {
+      const result = await flightLookupAPI.lookup(flightNumber, date);
+      if (result?.origin)              form.origin = result.origin;
+      if (result?.destination)         form.destination = result.destination;
+      if (result?.departureDate)       form.departureDate = result.departureDate;
+      if (result?.arrivalDate)         form.arrivalDate = result.arrivalDate;
+      if (result?.departureTime)       form.departureTime = result.departureTime;
+      if (result?.arrivalTime)         form.arrivalTime = result.arrivalTime;
+      if (result?.departureTimezone)   form.originTimezone = result.departureTimezone;
+      if (result?.arrivalTimezone)     form.destinationTimezone = result.arrivalTimezone;
+      if (result?.flightLookupId)      form.flightLookupId = result.flightLookupId;
+      if (isEdit) editForm = editForm; else itemForm = itemForm;
+    } catch {
+      // Silent — user can fill manually
+    } finally {
+      flightLookupLoading = false;
+    }
+  }
 
   function onItemFlightNumberInput(e) {
     const upper = e.target.value.toUpperCase();
@@ -608,6 +631,10 @@
     itemForm = itemForm; // trigger reactivity
   }
 
+  function onItemFlightNumberBlur() {
+    autofillFlight(itemForm, itemForm.flightNumber, itemForm.departureDate);
+  }
+
   function onEditFlightNumberInput(e) {
     const upper = e.target.value.toUpperCase();
     if (e.target.value !== upper) e.target.value = upper;
@@ -615,6 +642,10 @@
     const looked = lookupAirline(editForm.flightNumber);
     editForm.airline = looked;
     editForm = editForm; // trigger reactivity
+  }
+
+  function onEditFlightNumberBlur() {
+    autofillFlight(editForm, editForm.flightNumber, editForm.departureDate, true);
   }
 
   function togglePane(pane) {
@@ -1385,6 +1416,7 @@
     if (!itemForm[endField] || start > itemForm[endField]) {
       itemForm[endField] = start;
     }
+    if (startField === 'departureDate') autofillFlight(itemForm, itemForm.flightNumber, start);
   }
 
   function onItemEndDateChange(startField, endField) {
@@ -1397,6 +1429,7 @@
     if (!editForm[endField] || start > editForm[endField]) {
       editForm[endField] = start;
     }
+    if (startField === 'departureDate') autofillFlight(editForm, editForm.flightNumber, start, true);
   }
 
   function onEditEndDateChange(startField, endField) {
@@ -1665,8 +1698,10 @@
       onDeleteTrip={handleDeleteTrip}
       onOpenHotelFormForTrip={openHotelFormForTrip}
       onEditFlightNumberInput={onEditFlightNumberInput}
+      onEditFlightNumberBlur={onEditFlightNumberBlur}
       onEditStartDateChange={onEditStartDateChange}
       onEditEndDateChange={onEditEndDateChange}
+      {flightLookupLoading}
       onAttendeeInput={onAttendeeInput}
       onDismissSuggestions={dismissAttendeeSuggestions}
       onAddAttendee={handleAddAttendee}
@@ -1730,8 +1765,10 @@
       onTripEndDateChange={onTripEndDateChange}
       onCreateItem={handleCreateItem}
       onItemFlightNumberInput={onItemFlightNumberInput}
+      onItemFlightNumberBlur={onItemFlightNumberBlur}
       onItemStartDateChange={onItemStartDateChange}
       onItemEndDateChange={onItemEndDateChange}
+      {flightLookupLoading}
       {filterTripsByItemDate}
       {getItemPrimaryDate}
       onAttendeeInput={onAttendeeInput}

@@ -18,6 +18,7 @@ const vouchersRoutes = require('./vouchers');
 const usersRoutes = require('./users');
 const loyaltyRoutes = require('./loyalty');
 const pnrRoutes = require('./pnr');
+const flightLookupRoutes = require('./flightLookup');
 
 // Mount route modules
 router.use('/trips', tripsRoutes);
@@ -30,5 +31,6 @@ router.use('/geocode', geocodeRoutes);
 router.use('/users', usersRoutes);
 router.use('/loyalty', loyaltyRoutes);
 router.use('/pnr', pnrRoutes);
+router.use('/flight-lookup', flightLookupRoutes);
 
 module.exports = router;

@@ -335,3 +335,13 @@ export const pnrAPI = {
     return response.data; // { flights: [...] }
   },
 };
+
+// Flight Lookup API
+export const flightLookupAPI = {
+  async lookup(flightNumber, date) {
+    const response = await api.get(
+      `/flight-lookup?flightNumber=${encodeURIComponent(flightNumber)}&date=${encodeURIComponent(date)}`
+    );
+    return response.data; // { flightLookupId, origin, destination, departureTime, arrivalTime, ... }
+  },
+};
