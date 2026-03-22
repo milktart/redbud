@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { navigate } from 'svelte-routing';
-  import { authAPI, tripAPI, itemAPI, attendeeAPI, companionAPI, usersAPI, loyaltyAPI, flightLookupAPI } from '../lib/services/api';
+  import { authAPI, tripAPI, itemAPI, attendeeAPI, companionAPI, usersAPI, loyaltyAPI, flightLookupAPI, adminAPI } from '../lib/services/api';
   import { lookupAirline } from '../lib/data/airlines.js';
   import { user, isAuthenticated } from '../lib/stores/user';
   import DeleteModal from '../lib/components/DeleteModal.svelte';
@@ -756,6 +756,7 @@
         payload.destination = itemForm.destination;
         payload.pnr = itemForm.pnr || undefined;
         payload.seat = itemForm.seat || undefined;
+        payload.flightLookupId = itemForm.flightLookupId || undefined;
       } else if (itemForm.itemType === 'hotel') {
         payload.hotelName = itemForm.hotelName;
         payload.address = itemForm.address;
@@ -1609,6 +1610,7 @@
         payload.destination = editForm.destination;
         payload.pnr = editForm.pnr || undefined;
         payload.seat = editForm.seat || undefined;
+        payload.flightLookupId = editForm.flightLookupId || undefined;
       } else if (editForm.itemType === 'hotel') {
         payload.hotelName = editForm.hotelName;
         payload.address = editForm.address;
@@ -1838,6 +1840,13 @@
       onAddLoyaltyProgram={handleAddLoyaltyProgram}
       onUpdateLoyaltyProgram={handleUpdateLoyaltyProgram}
       onDeleteLoyaltyProgram={handleDeleteLoyaltyProgram}
+      isAdmin={$user?.isAdmin === true}
+      onLoadAdminAirports={() => adminAPI.getAllAirports()}
+      onUpdateAdminAirport={(iata, data) => adminAPI.updateAirport(iata, data)}
+      onLoadCachedFlights={() => adminAPI.getCachedFlights()}
+      onDeleteCachedFlight={(id) => adminAPI.deleteCachedFlight(id)}
+      onDeleteAllCachedFlights={() => adminAPI.deleteAllCachedFlights()}
+      onRefreshCachedFlight={(flightNumber, date) => adminAPI.refreshCachedFlight(flightNumber, date)}
     />
   {/if}
 </div>

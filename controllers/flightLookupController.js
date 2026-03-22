@@ -1,4 +1,5 @@
 const FlightLookupService = require('../services/FlightLookupService');
+const { FlightLookup } = require('../models');
 const apiResponse = require('../utils/apiResponse');
 const logger = require('../utils/logger');
 
@@ -42,5 +43,43 @@ exports.refresh = async (req, res) => {
     const code = error.statusCode;
     if (code === 404) return res.status(404).json({ success: false, message: error.message });
     return apiResponse.internalError(res, 'Flight refresh failed', error);
+  }
+};
+
+// GET /api/v1/flight-lookup/admin/all (admin only)
+exports.adminList = async (req, res) => {
+  try {
+    const records = await FlightLookup.findAll({
+      attributes: ['id', 'flightIata', 'flightDate', 'depIata', 'arrIata', 'flightStatus', 'airlineName', 'apiLastFetched', 'createdAt'],
+      order: [['apiLastFetched', 'DESC']],
+    });
+    return apiResponse.success(res, { records }, 'Cached flight lookups retrieved');
+  } catch (error) {
+    logger.error('ADMIN_FLIGHT_LIST_ERROR', { error: error.message });
+    return apiResponse.internalError(res, 'Failed to retrieve cached flights');
+  }
+};
+
+// DELETE /api/v1/flight-lookup/admin/:id (admin only)
+exports.adminDelete = async (req, res) => {
+  try {
+    const record = await FlightLookup.findByPk(req.params.id);
+    if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
+    await record.destroy();
+    return apiResponse.success(res, null, 'Cached flight deleted');
+  } catch (error) {
+    logger.error('ADMIN_FLIGHT_DELETE_ERROR', { id: req.params.id, error: error.message });
+    return apiResponse.internalError(res, 'Failed to delete cached flight');
+  }
+};
+
+// DELETE /api/v1/flight-lookup/admin (admin only) — delete all
+exports.adminDeleteAll = async (req, res) => {
+  try {
+    const count = await FlightLookup.destroy({ where: {}, truncate: false });
+    return apiResponse.success(res, { deleted: count }, 'All cached flights deleted');
+  } catch (error) {
+    logger.error('ADMIN_FLIGHT_DELETE_ALL_ERROR', { error: error.message });
+    return apiResponse.internalError(res, 'Failed to delete cached flights');
   }
 };

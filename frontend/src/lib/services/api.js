@@ -345,3 +345,32 @@ export const flightLookupAPI = {
     return response.data; // { flightLookupId, origin, destination, departureTime, arrivalTime, ... }
   },
 };
+
+// Admin API
+export const adminAPI = {
+  // Airports
+  async getAllAirports() {
+    const response = await api.get('/airports/admin/all');
+    return response.airports ?? [];
+  },
+  async updateAirport(iata, data) {
+    const response = await api.put(`/airports/${iata}`, data);
+    return response.airport;
+  },
+
+  // Cached flight lookups
+  async getCachedFlights() {
+    const response = await api.get('/flight-lookup/admin/all');
+    return response.data?.records ?? [];
+  },
+  async deleteCachedFlight(id) {
+    return await api.delete(`/flight-lookup/admin/${id}`);
+  },
+  async deleteAllCachedFlights() {
+    return await api.delete('/flight-lookup/admin');
+  },
+  async refreshCachedFlight(flightNumber, date) {
+    const response = await api.post('/flight-lookup/refresh', { flightNumber, date });
+    return response.data;
+  },
+};

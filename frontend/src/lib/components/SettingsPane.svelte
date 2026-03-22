@@ -4,7 +4,8 @@
   import PhoneInput from './PhoneInput.svelte';
 
   export let isMobileView = false;
-  export let activeSettingsSection = null; // 'profile' | 'security' | 'companions' | 'data'
+  export let isAdmin = false;
+  export let activeSettingsSection = null; // 'profile' | 'security' | 'companions' | 'loyalty' | 'data' | 'admin-airports' | 'admin-flights'
   export let profileForm = { firstName: '', lastName: '', email: '', phone: '' };
   export let profileSaveError = '';
   export let profileSaveSuccess = false;
@@ -48,6 +49,14 @@
   export let onUpdateLoyaltyProgram = null;
   export let onDeleteLoyaltyProgram = null;
 
+  // admin callbacks
+  export let onLoadAdminAirports = null; // () => Promise<Airport[]>
+  export let onUpdateAdminAirport = null; // (iata, data) => Promise<Airport>
+  export let onLoadCachedFlights = null; // () => Promise<FlightLookup[]>
+  export let onDeleteCachedFlight = null; // (id) => Promise<void>
+  export let onDeleteAllCachedFlights = null; // () => Promise<void>
+  export let onRefreshCachedFlight = null; // (flightNumber, date) => Promise<record>
+
   // local state — only relevant within SettingsPane
   let showSettingsSheet = false;
   let addingCompanion = false;
@@ -69,6 +78,24 @@
   let editLoyaltyForm = { programName: '', memberNumber: '', category: 'airline', accountFirstName: '', accountLastName: '' };
   let editLoyaltyError = '';
 
+  // admin local state
+  let adminAirports = [];
+  let adminAirportsLoading = false;
+  let adminAirportsError = '';
+  let adminAirportSearch = '';
+  let editingAirport = null;
+  let editAirportForm = { icao: '', name: '', city: '', country: '', latitude: '', longitude: '', timezone: '' };
+  let editAirportError = '';
+  let editAirportSuccess = false;
+
+  let cachedFlights = [];
+  let cachedFlightsLoading = false;
+  let cachedFlightsError = '';
+  let cachedFlightsDeleteConfirm = false;
+  let refreshingFlightId = null;
+  let refreshedFlightIds = new Set();
+  let refreshingAll = false;
+
   function selectSection(section) {
     if (onSectionChange) onSectionChange(section);
     if (isMobileView) showSettingsSheet = true;
@@ -84,6 +111,9 @@
     closeEditLoyalty();
     addingLoyalty = false;
     loyaltyFormError = '';
+    closeEditAirport();
+    adminAirportSearch = '';
+    cachedFlightsDeleteConfirm = false;
     if (onClearImport) onClearImport();
   }
 
@@ -212,6 +242,150 @@
     }
   }
 
+  async function loadAdminAirports() {
+    if (!onLoadAdminAirports) return;
+    adminAirportsLoading = true;
+    adminAirportsError = '';
+    try {
+      adminAirports = await onLoadAdminAirports();
+    } catch (err) {
+      adminAirportsError = err.message ?? 'Failed to load airports';
+    } finally {
+      adminAirportsLoading = false;
+    }
+  }
+
+  function openEditAirport(airport) {
+    editingAirport = airport;
+    editAirportForm = {
+      icao: airport.icao ?? '',
+      name: airport.name ?? '',
+      city: airport.city ?? '',
+      country: airport.country ?? '',
+      latitude: airport.latitude ?? '',
+      longitude: airport.longitude ?? '',
+      timezone: airport.timezone ?? '',
+    };
+    editAirportError = '';
+    editAirportSuccess = false;
+  }
+
+  function closeEditAirport() {
+    editingAirport = null;
+    editAirportError = '';
+    editAirportSuccess = false;
+  }
+
+  async function submitEditAirport(e) {
+    e.preventDefault();
+    if (!editingAirport || !onUpdateAdminAirport) return;
+    editAirportError = '';
+    editAirportSuccess = false;
+    try {
+      const updated = await onUpdateAdminAirport(editingAirport.iata, {
+        icao: editAirportForm.icao || undefined,
+        name: editAirportForm.name || undefined,
+        city: editAirportForm.city || undefined,
+        country: editAirportForm.country || undefined,
+        latitude: editAirportForm.latitude !== '' ? parseFloat(editAirportForm.latitude) : undefined,
+        longitude: editAirportForm.longitude !== '' ? parseFloat(editAirportForm.longitude) : undefined,
+        timezone: editAirportForm.timezone || undefined,
+      });
+      // Update in local list
+      adminAirports = adminAirports.map(a => a.iata === updated.iata ? { ...a, ...updated } : a);
+      editAirportSuccess = true;
+    } catch (err) {
+      editAirportError = err.message ?? 'Failed to update airport';
+    }
+  }
+
+  async function loadCachedFlights() {
+    if (!onLoadCachedFlights) return;
+    cachedFlightsLoading = true;
+    cachedFlightsError = '';
+    try {
+      cachedFlights = await onLoadCachedFlights();
+    } catch (err) {
+      cachedFlightsError = err.message ?? 'Failed to load cached flights';
+    } finally {
+      cachedFlightsLoading = false;
+    }
+  }
+
+  async function handleDeleteCachedFlight(id) {
+    if (!onDeleteCachedFlight) return;
+    try {
+      await onDeleteCachedFlight(id);
+      cachedFlights = cachedFlights.filter(f => f.id !== id);
+    } catch (err) {
+      cachedFlightsError = err.message ?? 'Failed to delete';
+    }
+  }
+
+  async function handleDeleteAllCachedFlights() {
+    if (!onDeleteAllCachedFlights) return;
+    cachedFlightsDeleteConfirm = false;
+    cachedFlightsError = '';
+    try {
+      await onDeleteAllCachedFlights();
+      cachedFlights = [];
+    } catch (err) {
+      cachedFlightsError = err.message ?? 'Failed to delete all';
+    }
+  }
+
+  async function handleRefreshCachedFlight(f) {
+    if (!onRefreshCachedFlight || refreshingFlightId === f.id) return;
+    refreshingFlightId = f.id;
+    cachedFlightsError = '';
+    try {
+      const updated = await onRefreshCachedFlight(f.flightIata, f.flightDate);
+      cachedFlights = cachedFlights.map(r => r.id === f.id ? { ...r, ...updated, id: f.id } : r);
+      refreshedFlightIds = new Set([...refreshedFlightIds, f.id]);
+      setTimeout(() => {
+        refreshedFlightIds = new Set([...refreshedFlightIds].filter(id => id !== f.id));
+      }, 2000);
+    } catch (err) {
+      cachedFlightsError = err.message ?? 'Failed to refresh flight';
+    } finally {
+      refreshingFlightId = null;
+    }
+  }
+
+  async function handleRefreshAllCachedFlights() {
+    if (!onRefreshCachedFlight || refreshingAll) return;
+    refreshingAll = true;
+    cachedFlightsError = '';
+    const results = [];
+    for (const f of cachedFlights) {
+      try {
+        const updated = await onRefreshCachedFlight(f.flightIata, f.flightDate);
+        cachedFlights = cachedFlights.map(r => r.id === f.id ? { ...r, ...updated, id: f.id } : r);
+        results.push(f.id);
+      } catch {
+        // continue with remaining flights
+      }
+    }
+    refreshedFlightIds = new Set(results);
+    setTimeout(() => { refreshedFlightIds = new Set(); }, 2000);
+    refreshingAll = false;
+  }
+
+  $: filteredAdminAirports = adminAirportSearch.trim().length >= 1
+    ? adminAirports.filter(a => {
+        const q = adminAirportSearch.trim().toLowerCase();
+        return a.iata?.toLowerCase().includes(q) || a.name?.toLowerCase().includes(q) || a.city?.toLowerCase().includes(q);
+      })
+    : adminAirports;
+
+  $: if (activeSettingsSection === 'admin-airports' && adminAirports.length === 0 && !adminAirportsLoading) {
+    loadAdminAirports();
+  }
+
+  $: if (activeSettingsSection === 'admin-flights' && cachedFlights.length === 0 && !cachedFlightsLoading) {
+    loadCachedFlights();
+  }
+
   function formatMRZName(firstName, lastName) {
     if (!lastName) return '';
     const normalize = (s) => s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z]/g, '');
@@ -222,7 +396,8 @@
 
   $: companionsPaneSpan = (addingCompanion || editingCompanion) ? 4 : 3;
   $: loyaltyPaneSpan = (addingLoyalty || editingLoyalty) ? 4 : 3;
-  $: dataPaneColumns = activeSettingsSection === 'data' && importData ? 4 : activeSettingsSection === 'companions' ? companionsPaneSpan : activeSettingsSection === 'loyalty' ? loyaltyPaneSpan : activeSettingsSection ? 2 : 1;
+  $: adminAirportsPaneSpan = editingAirport ? 4 : 3;
+  $: dataPaneColumns = activeSettingsSection === 'data' && importData ? 4 : activeSettingsSection === 'companions' ? companionsPaneSpan : activeSettingsSection === 'loyalty' ? loyaltyPaneSpan : activeSettingsSection === 'admin-airports' ? adminAirportsPaneSpan : activeSettingsSection === 'admin-flights' ? 3 : activeSettingsSection ? 2 : 1;
 </script>
 
 <ContentPane columns={isMobileView ? 1 : dataPaneColumns} mobileTop="0">
@@ -324,6 +499,43 @@
           </svg>
         </button>
       </div>
+
+      {#if isAdmin}
+      <div class="settings-section">
+        <h4 class="settings-section-title settings-section-title--admin">Admin</h4>
+        <button class="settings-option" class:active={activeSettingsSection === 'admin-airports'} on:click={() => selectSection('admin-airports')}>
+          <div class="settings-option-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+          </div>
+          <div class="settings-option-content">
+            <span class="settings-option-label">Manage Airports</span>
+            <span class="settings-option-description">Edit airport data and timezones</span>
+          </div>
+          <svg class="settings-option-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+
+        <button class="settings-option" class:active={activeSettingsSection === 'admin-flights'} on:click={() => selectSection('admin-flights')}>
+          <div class="settings-option-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            </svg>
+          </div>
+          <div class="settings-option-content">
+            <span class="settings-option-label">Cached Flights</span>
+            <span class="settings-option-description">Manage cached flight lookup data</span>
+          </div>
+          <svg class="settings-option-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </div>
+      {/if}
 
       <div class="settings-section">
         <button class="settings-option settings-option--danger" on:click={onLogout}>
@@ -943,6 +1155,201 @@
       </PaneColumn>
     {/if}
 
+  <!-- Admin: Manage Airports (desktop) -->
+  {:else if activeSettingsSection === 'admin-airports' && !isMobileView}
+    <PaneColumn span={2} divider={true}>
+      <div class="edit-header">
+        <h3 class="pane-title">Manage Airports</h3>
+        <button class="close-button" on:click={() => { if (onSectionChange) onSectionChange(null); closeEditAirport(); adminAirportSearch = ''; }} aria-label="Close">×</button>
+      </div>
+
+      {#if adminAirportsLoading}
+        <p class="companions-empty">Loading...</p>
+      {:else if adminAirportsError}
+        <p class="companions-error">{adminAirportsError}</p>
+      {:else}
+        <div class="admin-search-row">
+          <input class="admin-search-input" type="text" placeholder="Search IATA, name, or city..." bind:value={adminAirportSearch} />
+          <span class="admin-search-count">{filteredAdminAirports.length} / {adminAirports.length}</span>
+        </div>
+        <div class="companions-table-wrapper">
+          <table class="companions-table">
+            <thead>
+              <tr>
+                <th>IATA</th>
+                <th>Name</th>
+                <th>City</th>
+                <th>Country</th>
+                <th>Timezone</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each filteredAdminAirports as airport (airport.iata)}
+                <tr class="companion-row" class:selected={editingAirport?.iata === airport.iata}>
+                  <td><code>{airport.iata}</code></td>
+                  <td>{airport.name}</td>
+                  <td>{airport.city}</td>
+                  <td>{airport.country}</td>
+                  <td class="admin-tz-cell">{airport.timezone ?? '—'}</td>
+                  <td class="col-actions">
+                    <button class="companion-edit-btn" class:active={editingAirport?.iata === airport.iata} on:click={() => editingAirport?.iata === airport.iata ? closeEditAirport() : openEditAirport(airport)} aria-label="Edit airport">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
+    </PaneColumn>
+
+    {#if editingAirport}
+      <PaneColumn span={1} divider={true}>
+        <div class="edit-header">
+          <h3 class="pane-title">Edit {editingAirport.iata}</h3>
+          <button class="close-button" on:click={closeEditAirport} aria-label="Close">×</button>
+        </div>
+        <form class="edit-form" on:submit={submitEditAirport}>
+          <div class="form-group">
+            <label for="admin-airport-name">Name</label>
+            <input id="admin-airport-name" type="text" bind:value={editAirportForm.name} />
+          </div>
+          <div class="form-row">
+            <div class="form-group form-group--60">
+              <label for="admin-airport-city">City</label>
+              <input id="admin-airport-city" type="text" bind:value={editAirportForm.city} />
+            </div>
+            <div class="form-group form-group--40">
+              <label for="admin-airport-country">Country</label>
+              <input id="admin-airport-country" type="text" bind:value={editAirportForm.country} />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group form-group--50">
+              <label for="admin-airport-icao">ICAO</label>
+              <input id="admin-airport-icao" type="text" bind:value={editAirportForm.icao} maxlength="4" />
+            </div>
+            <div class="form-group form-group--50">
+              <label for="admin-airport-tz">Timezone</label>
+              <input id="admin-airport-tz" type="text" bind:value={editAirportForm.timezone} placeholder="America/New_York" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group form-group--50">
+              <label for="admin-airport-lat">Latitude</label>
+              <input id="admin-airport-lat" type="number" step="any" bind:value={editAirportForm.latitude} />
+            </div>
+            <div class="form-group form-group--50">
+              <label for="admin-airport-lon">Longitude</label>
+              <input id="admin-airport-lon" type="number" step="any" bind:value={editAirportForm.longitude} />
+            </div>
+          </div>
+          {#if editAirportError}
+            <p class="companions-error">{editAirportError}</p>
+          {/if}
+          {#if editAirportSuccess}
+            <p class="profile-save-success">Saved.</p>
+          {/if}
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" on:click={closeEditAirport}>Cancel</button>
+            <button type="submit" class="btn-primary">Save</button>
+          </div>
+        </form>
+      </PaneColumn>
+    {/if}
+
+  <!-- Admin: Cached Flights (desktop) -->
+  {:else if activeSettingsSection === 'admin-flights' && !isMobileView}
+    <PaneColumn span={2} divider={true}>
+      <div class="edit-header">
+        <h3 class="pane-title">Cached Flights</h3>
+        <button class="close-button" on:click={() => { if (onSectionChange) onSectionChange(null); cachedFlightsDeleteConfirm = false; }} aria-label="Close">×</button>
+      </div>
+
+      {#if cachedFlightsError}
+        <p class="companions-error">{cachedFlightsError}</p>
+      {/if}
+
+      {#if cachedFlightsLoading}
+        <p class="companions-empty">Loading...</p>
+      {:else if cachedFlights.length === 0}
+        <p class="companions-empty">No cached flight lookups.</p>
+      {:else}
+        <div class="companions-table-wrapper">
+          <table class="companions-table">
+            <thead>
+              <tr>
+                <th>Flight</th>
+                <th>Date</th>
+                <th>Route</th>
+                <th>Status</th>
+                <th>Fetched</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each cachedFlights as f (f.id)}
+                <tr class="companion-row" class:cache-row-refreshed={refreshedFlightIds.has(f.id)}>
+                  <td><code>{f.flightIata}</code></td>
+                  <td>{f.flightDate}</td>
+                  <td>{f.depIata ?? '?'} → {f.arrIata ?? '?'}</td>
+                  <td>{f.flightStatus ?? '—'}</td>
+                  <td class="admin-tz-cell">{f.apiLastFetched ? new Date(f.apiLastFetched).toLocaleDateString() : '—'}</td>
+                  <td class="col-actions col-actions-multi">
+                    <div class="col-actions-btns">
+                      <button class="companion-edit-btn" class:cache-refreshed={refreshedFlightIds.has(f.id)} on:click={() => handleRefreshCachedFlight(f)} aria-label="Refresh flight data" disabled={refreshingFlightId === f.id || refreshingAll}>
+                        {#if refreshedFlightIds.has(f.id)}
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        {:else}
+                          <svg class:spin={refreshingFlightId === f.id || refreshingAll} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                          </svg>
+                        {/if}
+                      </button>
+                      <button class="companion-edit-btn companion-edit-btn--danger" on:click={() => handleDeleteCachedFlight(f.id)} aria-label="Delete cached flight" disabled={refreshingFlightId === f.id || refreshingAll}>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                          <path d="M10 11v6M14 11v6"/>
+                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="6" class="companions-table-footer">
+                  {#if cachedFlightsDeleteConfirm}
+                    <span class="admin-confirm-inline">
+                      Delete all {cachedFlights.length} records?
+                      <button class="companions-add-inline-btn companions-add-inline-btn--danger" on:click={handleDeleteAllCachedFlights}>Yes, delete all</button>
+                      <button class="companions-add-inline-btn" on:click={() => cachedFlightsDeleteConfirm = false}>Cancel</button>
+                    </span>
+                  {:else}
+                    <button class="companions-add-inline-btn" on:click={handleRefreshAllCachedFlights} disabled={refreshingAll}>
+                      {refreshingAll ? 'Refreshing...' : '↻ Refresh All'}
+                    </button>
+                    <button class="companions-add-inline-btn companions-add-inline-btn--danger" on:click={() => cachedFlightsDeleteConfirm = true}>Delete All</button>
+                  {/if}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      {/if}
+    </PaneColumn>
+
   <!-- Profile / Security section (desktop) -->
   {:else if activeSettingsSection && !isMobileView}
     <PaneColumn span={1} divider={true}>
@@ -1036,6 +1443,8 @@
             {:else}Loyalty Programs
             {/if}
           {:else if activeSettingsSection === 'data'}Manage Data
+          {:else if activeSettingsSection === 'admin-airports'}Manage Airports
+          {:else if activeSettingsSection === 'admin-flights'}Cached Flights
           {/if}
         </h3>
         <button class="close-btn" on:click={closeSheet}>✕</button>
@@ -1641,6 +2050,158 @@
             <button type="button" class="btn-danger" style="width:100%" on:click={onShowDeleteDataModal}>Delete All Trip Data</button>
           </div>
         </div>
+      {:else if activeSettingsSection === 'admin-airports'}
+        {#if adminAirportsError}
+          <p class="companions-error">{adminAirportsError}</p>
+        {/if}
+        {#if adminAirportsLoading}
+          <p class="companions-empty">Loading...</p>
+        {:else}
+          <div class="admin-search-row">
+            <input class="admin-search-input" type="text" placeholder="Search IATA, name, or city..." bind:value={adminAirportSearch} />
+          </div>
+          <div class="companions-table-wrapper">
+            <table class="companions-table">
+              <thead>
+                <tr>
+                  <th>IATA</th>
+                  <th>Name</th>
+                  <th>Timezone</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each filteredAdminAirports as airport (airport.iata)}
+                  <tr>
+                    <td><code>{airport.iata}</code></td>
+                    <td>{airport.name}</td>
+                    <td class="admin-tz-cell">{airport.timezone ?? '—'}</td>
+                    <td>
+                      <button class="companion-edit-btn" class:active={editingAirport?.iata === airport.iata} on:click={() => editingAirport?.iata === airport.iata ? closeEditAirport() : openEditAirport(airport)}>Edit</button>
+                    </td>
+                  </tr>
+                  {#if editingAirport?.iata === airport.iata}
+                    <tr>
+                      <td colspan="4">
+                        <form class="edit-form admin-inline-form" on:submit={submitEditAirport}>
+                          <div class="form-group">
+                            <label for="admin-mob-name">Name</label>
+                            <input id="admin-mob-name" type="text" bind:value={editAirportForm.name} />
+                          </div>
+                          <div class="form-row">
+                            <div class="form-group form-group--50">
+                              <label for="admin-mob-city">City</label>
+                              <input id="admin-mob-city" type="text" bind:value={editAirportForm.city} />
+                            </div>
+                            <div class="form-group form-group--50">
+                              <label for="admin-mob-country">Country</label>
+                              <input id="admin-mob-country" type="text" bind:value={editAirportForm.country} />
+                            </div>
+                          </div>
+                          <div class="form-row">
+                            <div class="form-group form-group--50">
+                              <label for="admin-mob-icao">ICAO</label>
+                              <input id="admin-mob-icao" type="text" bind:value={editAirportForm.icao} maxlength="4" />
+                            </div>
+                            <div class="form-group form-group--50">
+                              <label for="admin-mob-tz">Timezone</label>
+                              <input id="admin-mob-tz" type="text" bind:value={editAirportForm.timezone} />
+                            </div>
+                          </div>
+                          <div class="form-row">
+                            <div class="form-group form-group--50">
+                              <label for="admin-mob-lat">Lat</label>
+                              <input id="admin-mob-lat" type="number" step="any" bind:value={editAirportForm.latitude} />
+                            </div>
+                            <div class="form-group form-group--50">
+                              <label for="admin-mob-lon">Lon</label>
+                              <input id="admin-mob-lon" type="number" step="any" bind:value={editAirportForm.longitude} />
+                            </div>
+                          </div>
+                          {#if editAirportError}<p class="companions-error">{editAirportError}</p>{/if}
+                          {#if editAirportSuccess}<p class="profile-save-success">Saved.</p>{/if}
+                          <div class="form-actions">
+                            <button type="button" class="btn-secondary" on:click={closeEditAirport}>Cancel</button>
+                            <button type="submit" class="btn-primary">Save</button>
+                          </div>
+                        </form>
+                      </td>
+                    </tr>
+                  {/if}
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+
+      {:else if activeSettingsSection === 'admin-flights'}
+        {#if cachedFlightsError}
+          <p class="companions-error">{cachedFlightsError}</p>
+        {/if}
+        {#if cachedFlightsLoading}
+          <p class="companions-empty">Loading...</p>
+        {:else if cachedFlights.length === 0}
+          <p class="companions-empty">No cached flight lookups.</p>
+        {:else}
+          <div class="companions-table-wrapper">
+            <table class="companions-table">
+              <thead>
+                <tr><th>Flight</th><th>Date</th><th>Route</th><th class="col-actions col-actions-multi"></th></tr>
+              </thead>
+              <tbody>
+                {#each cachedFlights as f (f.id)}
+                  <tr class="companion-row" class:cache-row-refreshed={refreshedFlightIds.has(f.id)}>
+                    <td><code>{f.flightIata}</code></td>
+                    <td>{f.flightDate}</td>
+                    <td>{f.depIata ?? '?'} → {f.arrIata ?? '?'}</td>
+                    <td class="col-actions col-actions-multi">
+                      <div class="col-actions-btns">
+                        <button class="companion-edit-btn" class:cache-refreshed={refreshedFlightIds.has(f.id)} on:click={() => handleRefreshCachedFlight(f)} aria-label="Refresh" disabled={refreshingFlightId === f.id || refreshingAll}>
+                          {#if refreshedFlightIds.has(f.id)}
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          {:else}
+                            <svg class:spin={refreshingFlightId === f.id || refreshingAll} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                              <polyline points="23 4 23 10 17 10"/>
+                              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                            </svg>
+                          {/if}
+                        </button>
+                        <button class="companion-edit-btn companion-edit-btn--danger" on:click={() => handleDeleteCachedFlight(f.id)} aria-label="Delete" disabled={refreshingFlightId === f.id || refreshingAll}>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                            <path d="M10 11v6M14 11v6"/>
+                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="4" class="companions-table-footer">
+                    {#if cachedFlightsDeleteConfirm}
+                      <span class="admin-confirm-inline">
+                        Delete all {cachedFlights.length} records?
+                        <button class="companions-add-inline-btn companions-add-inline-btn--danger" on:click={handleDeleteAllCachedFlights}>Yes, delete all</button>
+                        <button class="companions-add-inline-btn" on:click={() => cachedFlightsDeleteConfirm = false}>Cancel</button>
+                      </span>
+                    {:else}
+                      <button class="companions-add-inline-btn" on:click={handleRefreshAllCachedFlights} disabled={refreshingAll}>
+                        {refreshingAll ? 'Refreshing...' : '↻ Refresh All'}
+                      </button>
+                      <button class="companions-add-inline-btn companions-add-inline-btn--danger" on:click={() => cachedFlightsDeleteConfirm = true}>Delete All</button>
+                    {/if}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        {/if}
       {/if}
 
     </div>
@@ -2236,6 +2797,18 @@
     text-align: right;
   }
 
+  .col-actions-multi {
+    width: 68px;
+    text-align: right;
+  }
+
+  .col-actions-btns {
+    display: flex;
+    gap: 2px;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
   .perm-dot {
     display: inline-block;
     width: 10px;
@@ -2301,6 +2874,96 @@
   .edit-companion-select:focus {
     outline: none;
     border-color: var(--primary-color);
+  }
+
+  .settings-section-title--admin {
+    color: var(--primary-color);
+  }
+
+  .admin-search-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .admin-search-input {
+    flex: 1;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--glass-border-dark);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    background: var(--glass-bg-medium);
+    color: var(--dark-text);
+  }
+
+  .admin-search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+  }
+
+  .admin-search-count {
+    font-size: 0.78rem;
+    color: var(--grey-500);
+    white-space: nowrap;
+  }
+
+  .admin-tz-cell {
+    font-size: 0.78rem;
+    color: var(--grey-600);
+  }
+
+  .companions-add-inline-btn--danger {
+    color: var(--error-color);
+  }
+
+  .companions-add-inline-btn--danger:hover {
+    color: var(--error-color);
+  }
+
+  .admin-confirm-inline {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    font-size: 0.78rem;
+    color: var(--grey-600);
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .spin {
+    animation: spin 0.8s linear infinite;
+    transform-origin: center;
+  }
+
+  .cache-refreshed {
+    color: var(--success-color, #22c55e);
+    border-color: transparent;
+  }
+
+  .cache-refreshed:hover {
+    background: color-mix(in srgb, var(--success-color, #22c55e) 10%, transparent);
+  }
+
+  .cache-row-refreshed td {
+    transition: background 0.3s;
+    background: color-mix(in srgb, var(--success-color, #22c55e) 6%, transparent);
+  }
+
+  .companion-edit-btn--danger {
+    color: var(--error-color);
+  }
+
+  .companion-edit-btn--danger:hover {
+    background: color-mix(in srgb, var(--error-color) 10%, transparent);
+    border-color: color-mix(in srgb, var(--error-color) 40%, transparent);
+  }
+
+  .admin-inline-form {
+    padding: var(--spacing-sm) 0;
   }
 
   @media (max-width: 640px) {
